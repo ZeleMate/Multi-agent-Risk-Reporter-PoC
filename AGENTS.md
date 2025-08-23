@@ -45,7 +45,7 @@
 
 ```mermaid
 graph TD
-  A[Raw Docs (email .txt)] --> B[Preprocessing & PII Redaction]
+  A[Raw Docs (email .txt)] --> B[Preprocessing and PII Redaction]
   B --> C[Chunking + Metadata]
   C --> D[ChromaDB Vector Store]
   D --> E[Hybrid Retrieval]
@@ -149,7 +149,7 @@ DATA_CLEAN=./data/clean
 **Model config (`configs/model.yaml`)**
 ```yaml
 provider: openai
-chat_model: "gpt-4o-mini"
+chat_model: "gpt-5-mini"
 embedding_model: "text-embedding-3-small"
 temperature: 0.1
 max_output_tokens: 800
