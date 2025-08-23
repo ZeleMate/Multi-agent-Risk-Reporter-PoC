@@ -87,6 +87,7 @@ multi-agent-risk-reporter-poc/
 
 **Requirements**
 - Python **3.11+**
+- [uv](https://docs.astral.sh/uv/) package manager
 - Make (GNU Make)
 - An OpenAI API key (no network calls are made during CI)
 
@@ -108,6 +109,16 @@ make run        # run Analyzer -> Verifier -> Composer
 make report     # write report/portfolio_health.md
 make lint       # code quality (Black, Ruff, Mypy, Bandit)
 make test       # run pytest
+```
+
+**Alternative uv commands**
+```bash
+uv run python -m src.ingestion.parser --input-dir ./data/raw --output-dir ./data/clean
+uv run python -m src.retrieval.store --input-dir ./data/clean --vectorstore-dir .vectorstore
+uv run python -m src.graph.app --input-dir ./data/clean --vectorstore-dir .vectorstore
+uv run black src/ tests/ scripts/
+uv run ruff check src/ tests/ scripts/
+uv run pytest tests/
 ```
 
 ---
