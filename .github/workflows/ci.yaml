@@ -25,28 +25,29 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
-          cache-dependency-path: |
-            pyproject.toml
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          version: "latest"
 
       - name: Install lint tools
         run: |
-          python -m pip install --upgrade pip
-          pip install black ruff mypy bandit nbqa markdownlint-cli
+          uv sync --dev
 
       - name: Black (repo)
-        run: black --check . --line-length=100
+        run: uv run black --check . --line-length=100
 
       - name: Ruff (repo)
-        run: ruff check .
+        run: uv run ruff check .
 
       - name: Mypy (optional on src/)
         run: |
-          if [ -d src ]; then mypy src/ || true; else echo "no src/ dir, skipping mypy"; fi
+          if [ -d src ]; then uv run mypy src/ || true; else echo "no src/ dir, skipping mypy"; fi
 
       - name: Bandit (optional on src/)
         run: |
-          if [ -d src ]; then bandit -r src/ || true; else echo "no src/ dir, skipping bandit"; fi
+          if [ -d src ]; then uv run bandit -r src/ || true; else echo "no src/ dir, skipping bandit"; fi
 
       - name: Markdownlint (docs & README)
         run: |
@@ -56,8 +57,8 @@ jobs:
       - name: NBQA (only if notebooks/ exists)
         run: |
           if [ -d notebooks ]; then
-            nbqa black --check notebooks --line-length=100 || true
-            nbqa ruff notebooks || true
+            uv run nbqa black --check notebooks --line-length=100 || true
+            uv run nbqa ruff notebooks || true
           else
             echo "no notebooks/ dir"
           fi
@@ -74,19 +75,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
-          cache-dependency-path: |
-            pyproject.toml
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          version: "latest"
 
       - name: Install project (editable)
         run: |
-          python -m pip install --upgrade pip
-          pip install -e .
-          pip install pytest
+          uv sync --dev
 
       - name: Import smoke (no heavy deps)
         run: |
-          python - <<'PY'
+          uv run python - <<'PY'
           import importlib
           for m in ["langgraph", "langchain", "chromadb", "openai"]:
               importlib.import_module(m)
@@ -95,8 +96,8 @@ jobs:
 
       - name: CI smoke script (no network)
         run: |
-          python scripts/ci_smoke.py
+          uv run python scripts/ci_smoke.py
 
       - name: Run unit tests (if present)
         run: |
-          if [ -d tests ]; then pytest -q; else echo "No tests/ directory"; fi
+          if [ -d tests ]; then uv run pytest -q; else echo "No tests/ directory"; fi
