@@ -1,10 +1,11 @@
 name: CI
 
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+ # push:
+ #   branches: [ main, develop ]
+ # pull_request:
+ #   branches: [ main, develop ]
+  workflow_dispatch: # for manual triggering until we have a proper trigger
 
 env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
