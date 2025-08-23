@@ -45,7 +45,7 @@
 
 ```mermaid
 graph TD
-  A[Raw Docs (email in txt)] --> B[Preprocessing and PII Redaction]
+  A [Raw Docs] --> B[Preprocessing and PII Redaction]
   B --> C[Chunking + Metadata]
   C --> D[ChromaDB Vector Store]
   D --> E[Hybrid Retrieval]
