@@ -9,11 +9,11 @@ import dotenv
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 try:
-    from .pii import PIIRedactor
-    from .chunker import create_chunks
+    from src.ingestion.pii import PIIRedactor
+    from src.ingestion.chunker import create_chunks
 except ImportError:
-    from pii import PIIRedactor
-    from chunker import create_chunks
+    from src.ingestion.pii import PIIRedactor
+    from src.ingestion.chunker import create_chunks
 
 logger = logging.getLogger(__name__)
 
