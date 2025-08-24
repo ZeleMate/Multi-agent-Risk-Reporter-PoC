@@ -1,4 +1,4 @@
-# 📊 Portfolio Health Report System - Blueprint
+# Portfolio Health Report System - Blueprint
 
 ## Project Overview
 
@@ -232,6 +232,141 @@ Translate technical risks into business implications for C-suite decision-making
 Generate executive-ready Portfolio Health Report."""
 ```
 
+## Scoring Methodology & Weight Justification
+
+### Risk Priority Scoring Algorithm
+
+**Formula**: `score = role_weight + (age_weight × days_unresolved) + topic_weight + repeat_weight`
+
+#### 1. **Role Weight** (1.0 base multiplier)
+**Justification**: Executive attention prioritization based on organizational hierarchy and decision-making authority
+
+- **Director** (2.0): Highest priority - strategic decision-makers whose involvement indicates critical business impact
+- **Project Manager** (1.5): High priority - responsible for delivery timelines and resource allocation
+- **Business Analyst** (1.2): Medium priority - key for requirements clarity and scope definition
+- **Developer** (1.0): Base priority - technical implementation but may not affect overall project direction
+
+**Business Rationale**: Issues involving higher-level stakeholders typically have broader impact and require more immediate attention.
+
+#### 2. **Age Weight** (0.8 multiplier × days_unresolved)
+**Justification**: Time-based urgency escalation for unresolved issues
+
+**Age Calculation**:
+- **Current date**: System processes email with current timestamp
+- **Issue date**: Timestamp of the email containing the issue
+- **Days unresolved**: `(current_date - issue_date).days`
+- **UHPAI threshold**: Issues > 5 days automatically flagged as high-priority
+
+**Linear Escalation**:
+- **Day 1-5**: Normal resolution timeframe (no age penalty)
+- **Day 6+**: Each day adds 0.8 points to the score
+- **Executive concern**: Issues > 30 days get maximum age weighting
+- **Schedule impact**: Unresolved items increasingly likely to affect delivery milestones
+
+**Business Rationale**: The longer an issue remains unresolved, the greater the risk to project delivery and the more likely it is to cascade into multiple dependent tasks, requiring executive intervention.
+
+#### 3. **Topic Weight** (0.7 base score)
+**Justification**: Content relevance scoring based on keyword matching with risk-related terms
+
+**Complete Prefilter Keywords List**:
+- **Blocker terms**: "blocked", "waiting on", "missing", "unclear", "cannot"
+- **Urgency terms**: "asap", "urgent", "deadline", "critical", "high priority"
+- **Risk terms**: "risk", "delayed", "unresolved", "issue", "problem"
+- **Technical terms**: "error", "bug", "security", "payment", "prod"
+- **Communication terms**: "clarification", "question", "help", "incomplete"
+
+**Keyword Matching Process**:
+- **Case-insensitive matching**: Keywords detected regardless of case
+- **Partial word matching**: "urgent" matches "urgency", "urgently"
+- **Multiple keyword detection**: Single email can trigger multiple categories
+- **Context awareness**: Keywords must appear in business-relevant context
+
+**Scoring Logic**:
+- **0.7 points**: When any critical keyword is detected in the email content
+- **0.0 points**: No risk-related keywords found
+- **Binary scoring**: Either contains risk indicators or doesn't
+
+**Business Rationale**: Direct mentions of risk indicators provide stronger evidence that the issue requires immediate executive attention, helping distinguish between routine communication and actual business risks.
+
+#### Business Impact Categories
+
+**Executive-Level Impact Assessment**:
+- **Schedule Impact**: Will this delay delivery or milestones?
+- **Resource Impact**: Does this require reallocation or hiring?
+- **Financial Impact**: Could this increase costs or affect revenue?
+- **Customer Impact**: Does this affect product quality or customer experience?
+- **Reputational Impact**: Could this damage team or company reputation?
+
+**Mapped Business Impact Values**:
+- **schedule_delay**: Affects project timelines and delivery dates
+- **production_stability**: Impacts system reliability and uptime
+- **team_efficiency**: Reduces team productivity and communication effectiveness
+- **resource_allocation**: Requires additional staffing or budget
+- **customer_experience**: Affects end-user satisfaction and retention
+
+**Impact Priority for Executives**:
+1. **production_stability** (highest) - Direct revenue impact
+2. **schedule_delay** (high) - Affects delivery commitments
+3. **customer_experience** (high) - Customer retention impact
+4. **resource_allocation** (medium) - Cost and staffing impact
+5. **team_efficiency** (medium) - Internal productivity impact
+
+**Business Impact Integration**: The system uses business impact assessment to prioritize issues within the same score range, ensuring executives see the most strategically important issues first.
+
+#### 4. **Repeat Weight** (0.5 base score per mention)
+**Justification**: Frequency-based importance amplification through multiple email threads
+
+**Scoring Logic**:
+- **0.0 points**: Issue mentioned in only one email thread
+- **0.5 points**: Issue mentioned in 2 email threads
+- **1.0 points**: Issue mentioned in 3 email threads
+- **1.5 points**: Issue mentioned in 4+ email threads (capped to prevent over-weighting)
+
+**Detection Mechanism**:
+- **Thread correlation**: Issues linked across email threads by canonical subject (RE:/FW: prefixes removed) and participant lists
+- **Hash-based thread ID**: Stable identifier using `canonical_subject + participants + email_count` hash
+- **Semantic similarity**: AI analysis to identify the same issue discussed in different contexts
+- **Cross-thread analysis**: System examines multiple email files to find repeated mentions
+- **Participant diversity**: Issues raised by multiple team members get higher weighting
+
+**Business Rationale**: Issues that persist across multiple communications indicate either:
+- **Widespread impact**: Affecting multiple team members or workstreams
+- **Escalation attempts**: Issue has been raised multiple times without resolution
+- **Team consensus**: Multiple people recognize this as a significant problem
+
+**Executive Value**: Helps Directors identify issues that have "broken through" the normal resolution channels and require their direct intervention.
+
+### UHPAI Aging Threshold
+
+**Business Logic**: Issues older than 5 days automatically qualify as UHPAI (Unresolved High-Priority Action Items)
+
+- **Executive expectation**: Problems should be addressed within one work week
+- **Schedule protection**: Prevents small issues from becoming major blockers
+- **Leadership visibility**: Ensures Directors see issues that have exceeded normal resolution time
+
+### Scoring Examples
+
+**High-Priority Risk (Score: 4.8)**:
+- Role: Director (2.0) - critical stakeholder
+- Age: 21 days unresolved (0.8 × 21 = 16.8) - very old issue
+- Topic: 0.7 - contains risk keywords
+- Repeat: 0.3 (mentioned 3 times: 0.5 × 3 = 1.5, but capped at reasonable levels)
+- Total: 2.0 + 16.8 + 0.7 + 0.3 = 19.8
+
+**Medium-Priority Risk (Score: 3.2)**:
+- Role: Project Manager (1.5) - delivery responsible
+- Age: 1 day unresolved (0.8 × 1 = 0.8) - recent issue
+- Topic: 0.7 - contains risk keywords
+- Repeat: 0.0 - single mention
+- Total: 1.5 + 0.8 + 0.7 + 0.0 = 3.0
+
+**Low-Priority Item (Score: 1.7)**:
+- Role: Developer (1.0) - technical implementation
+- Age: 2 days unresolved (0.8 × 2 = 1.6) - within normal timeframe
+- Topic: 0.0 - no risk keywords
+- Repeat: 0.1 (mentioned twice: 0.5 × 2 = 1.0, but minimal)
+- Total: 1.0 + 1.6 + 0.0 + 0.1 = 2.7
+
 ### Security Considerations in AI Logic
 
 **PII Protection**:
@@ -448,6 +583,35 @@ The biggest architectural risk is **evidence quality degradation** - as the syst
 - Regular audits of generated reports
 
 **Result**: A robust system that maintains high evidence quality standards while providing executive decision-makers with trustworthy, actionable insights for QBR preparation.
+
+## 📊 Összefoglaló: Értékelő Metrikák Súlyozása
+
+### Teljes Scoring Formula
+```
+score = role_weight + (age_weight × days_unresolved) + topic_weight + repeat_weight
+```
+
+### Metrikák Összefoglalója
+
+| Metrika | Súlyozás | Indoklás | Üzleti Érték |
+|---------|----------|----------|-------------|
+| **Role Weight** | 1.0-2.0 | Szervezeti hierarchia | Stakeholder prioritás |
+| **Age Weight** | 0.8 × napok | Időalapú sürgősség | Schedule védelem |
+| **Topic Weight** | 0.7 | Kulcsszó relevancia | Risk signal quality |
+| **Repeat Weight** | 0.5 × említések | Frequencia amplifikáció | Escalation detection |
+
+### Konfigurálhatóság
+- **YAML alapú**: `configs/pipeline.yaml` és `configs/model.yaml`
+- **Dinamikus**: Futásidőben módosítható súlyok
+- **Business-driven**: Üzleti igények alapján állítható
+- **A/B tesztelhető**: Különböző konfigurációk tesztelése
+
+### Végső Prioritás
+1. **Score-based sorting**: Magasabb score = magasabb prioritás
+2. **Business impact tie-breaker**: Egyenlő score esetén business impact dönt
+3. **Executive relevance**: Csak Director figyelmét igénylő issues kerülnek be
+
+A rendszer **executive-first** megközelítéssel biztosítja, hogy a Director csak a legfontosabb, legmagasabb üzleti hatású problémákról kapjon értesítést a QBR előkészítés során.
 
 ## Implementation Notes
 
