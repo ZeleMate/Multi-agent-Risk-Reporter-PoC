@@ -584,35 +584,6 @@ The biggest architectural risk is **evidence quality degradation** - as the syst
 
 **Result**: A robust system that maintains high evidence quality standards while providing executive decision-makers with trustworthy, actionable insights for QBR preparation.
 
-## 📊 Összefoglaló: Értékelő Metrikák Súlyozása
-
-### Teljes Scoring Formula
-```
-score = role_weight + (age_weight × days_unresolved) + topic_weight + repeat_weight
-```
-
-### Metrikák Összefoglalója
-
-| Metrika | Súlyozás | Indoklás | Üzleti Érték |
-|---------|----------|----------|-------------|
-| **Role Weight** | 1.0-2.0 | Szervezeti hierarchia | Stakeholder prioritás |
-| **Age Weight** | 0.8 × napok | Időalapú sürgősség | Schedule védelem |
-| **Topic Weight** | 0.7 | Kulcsszó relevancia | Risk signal quality |
-| **Repeat Weight** | 0.5 × említések | Frequencia amplifikáció | Escalation detection |
-
-### Konfigurálhatóság
-- **YAML alapú**: `configs/pipeline.yaml` és `configs/model.yaml`
-- **Dinamikus**: Futásidőben módosítható súlyok
-- **Business-driven**: Üzleti igények alapján állítható
-- **A/B tesztelhető**: Különböző konfigurációk tesztelése
-
-### Végső Prioritás
-1. **Score-based sorting**: Magasabb score = magasabb prioritás
-2. **Business impact tie-breaker**: Egyenlő score esetén business impact dönt
-3. **Executive relevance**: Csak Director figyelmét igénylő issues kerülnek be
-
-A rendszer **executive-first** megközelítéssel biztosítja, hogy a Director csak a legfontosabb, legmagasabb üzleti hatású problémákról kapjon értesítést a QBR előkészítés során.
-
 ## Implementation Notes
 
 ### Core Analytical Engine Code
