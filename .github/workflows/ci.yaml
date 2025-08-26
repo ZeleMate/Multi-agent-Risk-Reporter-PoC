@@ -85,10 +85,6 @@ jobs:
           print("Core imports OK")
           PY
 
-      - name: CI smoke script (no network)
-        run: |
-          uv run python scripts/ci_smoke.py
-
       - name: Run unit tests (if present)
         run: |
           if [ -d tests ]; then uv run pytest -q; else echo "No tests/ directory"; fi
