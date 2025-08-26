@@ -1,11 +1,11 @@
 name: CI
 
 on:
- # push:
- #   branches: [ main, develop ]
- # pull_request:
- #   branches: [ main, develop ]
-  workflow_dispatch: # for manual triggering until we have a proper trigger
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+ # workflow_dispatch: # for manual triggering until we have a proper trigger
 
 env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
@@ -53,15 +53,6 @@ jobs:
         run: |
           if [ -d docs ]; then markdownlint "**/*.md" || true; else echo "no docs/ dir"; fi
           if [ -f README.md ]; then markdownlint "README.md" || true; fi
-
-      - name: NBQA (only if notebooks/ exists)
-        run: |
-          if [ -d notebooks ]; then
-            uv run nbqa black --check notebooks --line-length=100 || true
-            uv run nbqa ruff notebooks || true
-          else
-            echo "no notebooks/ dir"
-          fi
 
   install-and-smoke:
     name: Install deps & smoke tests
