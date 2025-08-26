@@ -4,21 +4,20 @@ from src.services.config import get_config
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import json
-from src.types import FlagItem
 from typing import List, Dict, Any
 import os
-
+from src.types import AnalyzerResponse
  
 
 
-def analyzer_agent(state: OverallState) -> OverallState:
+def analyzer_agent(state: OverallState) -> AnalyzerResponse:
     """Analyzer agent."""
     config = get_config()
     report_dir = getattr(config, "report_dir", "report")
     model_config = config.model
     model = ChatOpenAI(
         model=model_config.chat_model,
-        temperature=max(0.7, model_config.temperature),
+        temperature=model_config.temperature,
     )
     system_prompt = get_analyzer_system_prompt()
 
@@ -95,7 +94,4 @@ def analyzer_agent(state: OverallState) -> OverallState:
             pass
 
     # Return OverallState with the identified candidates
-    return {
-        **state,
-        "candidates": candidates
-    }
+    return AnalyzerResponse(items=candidates)

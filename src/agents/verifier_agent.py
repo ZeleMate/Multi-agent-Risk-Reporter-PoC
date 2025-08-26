@@ -1,13 +1,11 @@
 from src.agents.state import OverallState
-from src.prompts.verifier import get_verifier_prompt, get_verifier_system_prompt, get_verifier_validation_criteria
+from src.prompts.verifier import get_verifier_prompt, get_verifier_system_prompt
 from src.services.config import get_config
-from typing import List, Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from src.types import FlagItem
-import json
+from src.types import VerifierResponse
 
-def verifier_agent(state: OverallState) -> OverallState:
+def verifier_agent(state: OverallState) -> VerifierResponse:
     """Verifier agent."""
     config = get_config()
     report_dir = getattr(config, "report_dir", "report")
@@ -20,7 +18,6 @@ def verifier_agent(state: OverallState) -> OverallState:
     # The full_evidence comes from the chunks field
     prompt = get_verifier_prompt(state.get("candidates", []), state.get("chunks", []))
     system_prompt = get_verifier_system_prompt()
-    validation_criteria = get_verifier_validation_criteria()
 
     # Single system message with full instructions
     messages = [
@@ -59,7 +56,4 @@ def verifier_agent(state: OverallState) -> OverallState:
             pass
 
     # Return OverallState with the validated results
-    return {
-        **state,
-        "verified": verified
-    }
+    return VerifierResponse(verified=verified)

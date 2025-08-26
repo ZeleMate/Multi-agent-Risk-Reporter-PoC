@@ -4,20 +4,19 @@ from src.services.config import get_config
 from typing import List, Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
-import json
+from src.types import ComposerResponse
 
-def composer_agent(state: OverallState) -> OverallState:
+def composer_agent(state: OverallState) -> ComposerResponse:
     """Composer agent."""
     config = get_config()
-    model_config = config.model
-    model = ChatOpenAI(model=model_config.chat_model, temperature=model_config.temperature)
+    # Válaszd az alternative_model-t, ha az agent_models szerint a composer azt használja
+    use_alt = getattr(getattr(config, "agent_models", object()), "composer", "primary_model") == "alternative_model"
+    model_cfg = config.alternative_model if use_alt else config.model
+    model = ChatOpenAI(model=model_cfg.chat_model, temperature=model_cfg.temperature)
     prompt = get_composer_prompt(state["verified"], state["project_context"])
     system_prompt = get_composer_system_prompt()
     report_templates = get_composer_report_templates()
     formatting_rules = get_composer_formatting_rules()
-
-    # If there is no verified, ask the model to list the reasoning, but try to extract the most likely risks
-    # Additionally provide precomputed Evidence and Conf/Score cells for the table
 
     # Build Evidence and Conf/Score table cells from verified
     def _format_evidence(r: Dict[str, Any]) -> str:
@@ -80,7 +79,4 @@ def composer_agent(state: OverallState) -> OverallState:
 
 
     # Return OverallState with the generated report
-    return {
-        **state,
-        "report": response
-    }
+    return ComposerResponse(report=response)
