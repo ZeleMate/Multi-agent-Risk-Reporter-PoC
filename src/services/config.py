@@ -23,7 +23,7 @@ class ModelConfig:
     provider: str = "openai"
     chat_model: str = "gpt-5-mini"
     temperature: float = 0.1
-    max_output_tokens: int = 800
+    max_output_tokens: int = 50000
     json_response: bool = True
 
 @dataclass
@@ -44,9 +44,9 @@ class AgentModelsConfig:
 class AlternativeModelConfig:
     """Configuration for alternative model."""
     provider: str = "openai"
-    chat_model: str = "gpt-5"  # GPT-4 alternative
+    chat_model: str = "gpt-5"
     temperature: float = 0.1
-    max_output_tokens: int = 800
+    max_output_tokens: int = 50000
     json_response: bool = True
 
 @dataclass
@@ -104,7 +104,7 @@ class AppConfig:
     data_raw: str = "./data/raw"
     data_clean: str = "./data/clean"
     vectorstore_dir: str = ".vectorstore"
-    report_dir: str = "./report"
+    report_dir: str = "./data/report"
 
     # API Keys
     openai_api_key: Optional[str] = None
@@ -119,6 +119,8 @@ class AppConfig:
     flags: FlagsConfig = field(default_factory=FlagsConfig)
     scoring: ScoringConfig = field(default_factory=ScoringConfig)
     report: ReportConfig = field(default_factory=ReportConfig)
+    # Debug
+    debug_logs: bool = False
 
     def __post_init__(self):
         """Load API key from environment."""
@@ -213,6 +215,11 @@ class ConfigManager:
             config.data_raw = os.getenv("DATA_RAW", config.data_raw)
             config.data_clean = os.getenv("DATA_CLEAN", config.data_clean)
             config.vectorstore_dir = os.getenv("VECTORSTORE_DIR", config.vectorstore_dir)
+            config.report_dir = os.getenv("REPORT_DIR", config.report_dir)
+            # Debug flag
+            debug_env = os.getenv("DEBUG_LOGS")
+            if isinstance(debug_env, str):
+                config.debug_logs = debug_env.lower() in ("1", "true", "yes", "on")
 
             logger.info("Configuration loaded successfully")
             return config
