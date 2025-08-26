@@ -24,14 +24,11 @@ class ModelConfig:
     chat_model: str = "gpt-5-mini"
     temperature: float = 0.7
     max_output_tokens: int = 50000
-    json_response: bool = True
 
 @dataclass
 class EmbeddingConfig:
     """Configuration for embedding models."""
-    provider: str = "qwen"
     model_name: str = "Qwen/Qwen3-Embedding-0.6B"
-    dimensions: int = 1024
 
 @dataclass
 class AgentModelsConfig:
@@ -47,7 +44,6 @@ class AlternativeModelConfig:
     chat_model: str = "gpt-5"
     temperature: float = 0.7
     max_output_tokens: int = 50000
-    json_response: bool = True
 
 @dataclass
 class RetrievalConfig:
@@ -89,7 +85,6 @@ class ScoringConfig:
     """Configuration for scoring system."""
     repeat_weight: float = 0.5
     topic_weight: float = 0.7
-    age_weight: float = 0.8
     role_weight: float = 1.0
 
 @dataclass
@@ -128,6 +123,13 @@ class AppConfig:
 
 class ConfigManager:
     """Manages configuration loading and validation."""
+    @staticmethod
+    def _filter_dataclass_kwargs(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Filter incoming dict to only include kwargs that exist on the dataclass."""
+        if not isinstance(data, dict):
+            return {}
+        field_names = {f.name for f in cls.__dataclass_fields__.values()}  # type: ignore[attr-defined]
+        return {k: v for k, v in data.items() if k in field_names}
 
     @staticmethod
     def load_from_yaml(yaml_path: str) -> Dict[str, Any]:
@@ -161,22 +163,25 @@ class ConfigManager:
                 if model_data:
                     # Load primary model config
                     if "primary_model" in model_data:
-                        primary_data = model_data["primary_model"]
+                        primary_data = cls._filter_dataclass_kwargs(ModelConfig, model_data["primary_model"])
                         config.model = ModelConfig(**primary_data)
 
                     # Load embedding config
                     if "embedding_model" in model_data:
-                        embedding_data = model_data["embedding_model"]
+                        embedding_data = cls._filter_dataclass_kwargs(EmbeddingConfig, model_data["embedding_model"])
                         config.embedding = EmbeddingConfig(**embedding_data)
 
                     # Load alternative model config
                     if "alternative_model" in model_data:
-                        alt_data = model_data["alternative_model"]
+                        alt_data = cls._filter_dataclass_kwargs(AlternativeModelConfig, model_data["alternative_model"])
                         config.alternative_model = AlternativeModelConfig(**alt_data)
+                    else:
+                        # Set default alternative model if not specified
+                        config.alternative_model = AlternativeModelConfig()
 
                     # Load agent models config
                     if "agent_models" in model_data:
-                        agent_data = model_data["agent_models"]
+                        agent_data = cls._filter_dataclass_kwargs(AgentModelsConfig, model_data["agent_models"])
                         config.agent_models = AgentModelsConfig(**agent_data)
 
             # Load pipeline configuration
