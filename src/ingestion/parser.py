@@ -5,29 +5,19 @@ import json
 import hashlib
 from typing import List, Dict, Any, Optional
 import argparse
-import dotenv
 from datetime import datetime
 from email.utils import parsedate_to_datetime
-try:
-    from src.ingestion.pii import PIIRedactor
-    from src.ingestion.chunker import create_chunks
-except ImportError:
-    from src.ingestion.pii import PIIRedactor
-    from src.ingestion.chunker import create_chunks
+from src.ingestion.pii import PIIRedactor
+from src.ingestion.chunker import create_chunks
+from src.services.config import get_config
 
 logger = logging.getLogger(__name__)
 
-# Configure logging
-logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-dotenv.load_dotenv()
-
-input_dir = os.getenv("INPUT_DIR", "data/raw")
-output_dir = os.getenv("OUTPUT_DIR", "data/clean")
+# Note: logging configuration is handled by the CLI entrypoint; avoid setting it at import time here.
 
 def normalize_date(date_str: str) -> Dict[str, Any]:
     """
-    Normalize date string to ISO8601 and epoch timestamp.
+    Normalize date string and return epoch timestamp.
 
     Args:
         date_str: Raw date string from email
@@ -36,7 +26,7 @@ def normalize_date(date_str: str) -> Dict[str, Any]:
         Dict with normalized_date and epoch_timestamp
     """
     try:
-        # Try to parse email date format
+        # Primary: parse using standard email date parsing
         dt = parsedate_to_datetime(date_str)
         iso_date = dt.isoformat()
         epoch_timestamp = int(dt.timestamp())
@@ -45,29 +35,19 @@ def normalize_date(date_str: str) -> Dict[str, Any]:
             'epoch_timestamp': epoch_timestamp
         }
     except Exception:
-        # Fallback for non-standard date formats
+        # Fallback: accept common ISO-like patterns only, else return original
         try:
-            # Try common date patterns
-            patterns = [
-                (r'(\d{4})\.(\d{2})\.(\d{2}) (\d{2}):(\d{2})', '%Y.%m.%d %H:%M'),
-                (r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})', '%Y-%m-%d %H:%M:%S'),
-                (r'(\d{4})/(\d{2})/(\d{2}) (\d{2}):(\d{2})', '%Y/%m/%d %H:%M'),
-            ]
-
-            for pattern, fmt in patterns:
-                match = re.search(pattern, date_str)
-                if match:
-                    dt = datetime.strptime(match.group(0), fmt)
-                    iso_date = dt.isoformat()
-                    epoch_timestamp = int(dt.timestamp())
+            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M', '%Y.%m.%d %H:%M'):
+                try:
+                    dt = datetime.strptime(date_str.strip(), fmt)
                     return {
-                        'normalized_date': iso_date,
-                        'epoch_timestamp': epoch_timestamp
+                        'normalized_date': dt.isoformat(),
+                        'epoch_timestamp': int(dt.timestamp())
                     }
+                except Exception:
+                    continue
         except Exception:
             pass
-
-        # If all parsing fails, return original with null epoch
         return {
             'normalized_date': date_str,
             'epoch_timestamp': None
@@ -87,7 +67,7 @@ def parse_colleagues(colleagues_path: str) -> Dict[str, Dict[str, str]]:
             if line.startswith('Characters:') or not line:
                 continue
             
-            # Parse lines like: "Project Manager (PM): Péter Kovács (kovacs.peter@kisjozsitech.hu)"
+            # Parse lines like: "Project Manager (PM): Peter Kovacs (kovacs.peter@kisjozsitech.hu)"
             match = re.match(r'(.+?):\s*(.+?)\s*\((.+?)\)', line)
             if match:
                 role = match.group(1).strip()
@@ -149,7 +129,6 @@ def parse_email_thread(email_path: str, colleagues: Dict[str, Dict[str, str]], r
             # Parse individual email
             email_data = parse_single_email(email_content, colleagues, redactor)
             if email_data:
-                email_data['email_index'] = i
                 emails.append(email_data)
         
         # Create thread summary with stable hash-based thread_id
@@ -169,11 +148,25 @@ def parse_email_thread(email_path: str, colleagues: Dict[str, Dict[str, str]], r
         else:
             thread_id = os.path.basename(email_path).replace('.txt', '')
         
+        # Participants based on sender_person_id (already redacted in emails)
+        participants_redacted = []
+        for em in emails:
+            person_id = em.get('sender_person_id')
+            if person_id and person_id not in participants_redacted:
+                participants_redacted.append(person_id)
+                continue
+            # Fallback: use sender_name if not a placeholder
+            sender_name = em.get('sender_name')
+            if sender_name and sender_name not in ('[NAME]', '[PERSON]') and sender_name not in participants_redacted:
+                participants_redacted.append(sender_name)
+        if not participants_redacted:
+            participants_redacted = ['[PERSON]']
+
         thread_data = {
             'thread_id': thread_id,
             'file_path': email_path,
             'total_emails': len(emails),
-            'participants': list(set([email['sender_email'] for email in emails])),
+            'participants': participants_redacted,
             'subject': emails[0]['subject'] if emails else '',
             'canonical_subject': emails[0].get('canonical_subject', '') if emails else '',
             'start_date': emails[0]['date'] if emails else '',
@@ -307,11 +300,10 @@ def parse_single_email(email_content: str, colleagues: Dict[str, Dict[str, str]]
             'cc_recipients': cc_recipients,
             'date': date_str,
             'date_normalized': date_normalized['normalized_date'],
-            'epoch_timestamp': date_normalized['epoch_timestamp'],
             'subject': subject,
             'canonical_subject': canonical_subject,
             'body': body,
-            'body_length': len(body)
+            
         }
         
         # Apply PII redaction
@@ -373,9 +365,6 @@ def process_email_data(input_dir: str, output_dir: str) -> None:
         # Parse colleagues
         colleagues = parse_colleagues(colleagues_file)
 
-        # Initialize PII redactor
-        redactor = PIIRedactor()
-
         # Create person_id mapping for consistent identification
         person_id_mapping = {}
         for email, data in colleagues.items():
@@ -385,15 +374,26 @@ def process_email_data(input_dir: str, output_dir: str) -> None:
             person_id = f"{name_clean}_{role_clean}"
             person_id_mapping[email] = person_id
 
-        # Save colleagues data with person_id (PII protected)
+        # Build known_people for redactor (keep names here)
+        known_people = {}
+        for email, data in colleagues.items():
+            known_people[email] = {
+                'person_id': person_id_mapping[email],
+                'name': data['name'],
+                'role': data['role']
+            }
+
+        # Save colleagues data for output (PII protected - no names)
         colleagues_clean = {}
         for email, data in colleagues.items():
             colleagues_clean[email] = {
                 'person_id': person_id_mapping[email],
-                'name': data['name'],
                 'role': data['role'],
-                'email_redacted': '[EMAIL]'  # Redacted for consistency
+                'email_redacted': '[EMAIL]'
             }
+
+        # Initialize PII redactor with known people for name replacement
+        redactor = PIIRedactor(known_people=known_people)
 
         colleagues_output_path = os.path.join(output_dir, 'colleagues.json')
         with open(colleagues_output_path, 'w', encoding='utf-8') as f:
@@ -419,18 +419,9 @@ def process_email_data(input_dir: str, output_dir: str) -> None:
             json.dump(all_threads, f, ensure_ascii=False, indent=2)
         
         # Load chunking parameters from config if available
-        chunk_size = 1000
-        overlap = 100
-        config_path = os.path.join(os.path.dirname(input_dir), 'configs', 'pipeline.yaml')
-        if os.path.exists(config_path):
-            try:
-                import yaml
-                with open(config_path, 'r') as f:
-                    config = yaml.safe_load(f)
-                chunk_size = config.get('chunking', {}).get('chunk_size', 1000)
-                overlap = config.get('chunking', {}).get('overlap', 100)
-            except Exception:
-                logger.warning(f"Could not load config from {config_path}, using defaults")
+        app_config = get_config()
+        chunk_size = getattr(app_config.chunking, 'chunk_size', 1000)
+        overlap = getattr(app_config.chunking, 'overlap', 100)
 
         # Create chunks for vector store
         chunks = create_chunks(all_threads, chunk_size=chunk_size, overlap=overlap)
@@ -464,9 +455,13 @@ def process_email_data(input_dir: str, output_dir: str) -> None:
         raise
 
 if __name__ == "__main__":
+    # Configure logging only when running as a script
+    logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
     parser = argparse.ArgumentParser(description="Parse email threads and colleagues data")
-    parser.add_argument("--input-dir", type=str, default=input_dir, help="Input directory containing email files")
-    parser.add_argument("--output-dir", type=str, default=output_dir, help="Output directory to save parsed data")
+    app_config = get_config()
+    parser.add_argument("--input-dir", type=str, default=app_config.data_raw, help="Input directory containing email files")
+    parser.add_argument("--output-dir", type=str, default=app_config.data_clean, help="Output directory to save parsed data")
     args = parser.parse_args()
-    
+
     process_email_data(args.input_dir, args.output_dir)
