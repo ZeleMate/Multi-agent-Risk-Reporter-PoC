@@ -3,7 +3,7 @@
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Linting: Ruff](https://img.shields.io/badge/linting-ruff-6638B6.svg)](https://github.com/charliermarsh/ruff)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/ZeleMate/Multi-agent-Risk-Reporter-PoC/actions/workflows/ci.yaml)
-[![Coverage](https://img.shields.io/badge/coverage-85%25-yellow.svg)](https://github.com/ZeleMate/Multi-agent-Risk-Reporter-PoC)
+[![Coverage](https://img.shields.io/badge/coverage-100%-green.svg)](https://github.com/ZeleMate/Multi-agent-Risk-Reporter-PoC)
 [![LangGraph](https://img.shields.io/badge/LangGraph-3.0+-purple.svg)](https://github.com/langchain-ai/langgraph)
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-0.4+-green.svg)](https://www.trychroma.com/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--5-blue.svg)](https://openai.com/)
