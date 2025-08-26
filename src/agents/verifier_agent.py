@@ -15,7 +15,6 @@ def verifier_agent(state: OverallState) -> OverallState:
     model = ChatOpenAI(
         model=model_config.chat_model,
         temperature=max(0.7, model_config.temperature),
-        model_kwargs={"response_format": {"type": "json_object"}},
     )
 
     # The full_evidence comes from the chunks field
@@ -32,8 +31,10 @@ def verifier_agent(state: OverallState) -> OverallState:
     response_msg = model.invoke(messages)
     response_text = getattr(response_msg, "content", response_msg)
 
+    # Parse YAML
     try:
-        data = json.loads(response_text)
+        import yaml
+        data = yaml.safe_load(response_text)
     except Exception:
         data = response_text
 
