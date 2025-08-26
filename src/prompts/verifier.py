@@ -197,37 +197,3 @@ def get_verifier_system_prompt() -> str:
     """Get the system prompt for verifier agent."""
     return """You trust but verify: prefer downgrading confidence (high→mid→low) over rejecting plausible items. Reject only when evidence contradicts the claim or shows resolution. Provide precise, concise validation notes and keep useful candidates whenever evidence supports them at least partially."""
 
-def get_verifier_validation_criteria() -> Dict[str, List[str]]:
-    """Get validation criteria for different risk types - Based on Real Email Examples."""
-    return {
-        "erb": [
-            "Staging environment anomalies must be explicitly described",
-            "Production code bugs must have clear reproduction steps",
-            "Technical blockers must show actual development impact",
-            "Cache issues vs actual bugs must be properly distinguished",
-            "Filename validation and similar technical issues must be clearly identified",
-            "No speculative interpretations of potential problems"
-        ],
-        "uhpai": [
-            "Unanswered technical questions must be explicitly stated",
-            "Bug reports must have clear reproduction information",
-            "Miscommunication incidents must be clearly documented",
-            "Cross-project confusion must be explicitly shown",
-            "Process issues (like communication guidelines) must be clearly needed",
-            "Action items must have identifiable owners and clear next steps"
-        ],
-        "evidence_quality": [
-            "File:line citations must match actual email content",
-            "Context of email threads must be preserved",
-            "Timeline of issues must be accurately tracked",
-            "Developer admissions must be properly cited",
-            "Miscommunications must be explicitly shown, not inferred"
-        ],
-        "rejection_criteria": [
-            "Social discussions (team lunch planning) should be rejected",
-            "Routine status updates without action items should be rejected",
-            "Properly resolved issues should be rejected",
-            "Vague or ambiguous reports without clear impact should be rejected",
-            "Cross-project messages that are properly corrected should be rejected"
-        ]
-    }

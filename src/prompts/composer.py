@@ -97,6 +97,8 @@ You are creating a **Portfolio Health Report** for a **Director of Engineering**
 - **USE** reference actual evidence citations
 - **USE** maintain executive-level perspective
 
+**Do not return the rejected risks, only the verified ones.**
+
 ### **QUALITY STANDARDS:**
 - **Evidence-based**: Every claim has to be supported by citations
 - **Business-focused**: Frame everything in terms of business impact
