@@ -208,6 +208,12 @@ __marimo__/
 
 # data
 /data
+/data/raw
+/data/clean
+/data/report
 
 # Vector store (ChromaDB)
 /.vectorstore/
+
+#DS_Store
+.DS_Store
