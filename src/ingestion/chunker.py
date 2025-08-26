@@ -110,6 +110,7 @@ class EmailChunker:
         # Process emails with their original line ranges
         full_text = ""
         current_line_offset = 0
+        email_line_mappings = []  # Track which lines belong to which email
 
         for i, email in enumerate(thread_data.get('emails', [])):
             if i < len(email_boundaries):
@@ -117,6 +118,14 @@ class EmailChunker:
             else:
                 email_start_line = 0
                 email_end_line = len(original_lines) - 1
+
+            # Record line mapping for this email
+            email_line_mappings.append({
+                'email_index': i,
+                'start_line': email_start_line,
+                'end_line': email_end_line,
+                'content_start': current_line_offset
+            })
 
             # Add email header with line tracking
             email_header = f"From: {email.get('sender_name', 'Unknown')} [{email.get('sender_role', 'Unknown')}]\n"
@@ -140,6 +149,16 @@ class EmailChunker:
         current_tokens = 0
         chunk_start_line = 1
 
+        def map_content_position_to_original_line(content_position):
+            """Map content position to original file line using email mappings."""
+            for mapping in email_line_mappings:
+                if content_position >= mapping['content_start']:
+                    # Calculate relative position within this email
+                    relative_pos = content_position - mapping['content_start']
+                    # Map to original file lines
+                    return mapping['start_line'] + relative_pos
+            return 1  # fallback
+
         for i, sentence in enumerate(sentences):
             sentence_tokens = self.estimate_tokens(sentence)
 
@@ -149,9 +168,13 @@ class EmailChunker:
                 chunk_text = ' '.join(current_chunk)
                 chunk_id = f"{thread_id}_chunk_{len(chunks) + 1}"
 
-                # Map chunk text back to approximate line ranges in original file
-                chunk_line_count = len(chunk_text.split('\n'))
-                chunk_end_line = chunk_start_line + chunk_line_count - 1
+                # Map chunk positions to original file lines using email mappings
+                chunk_start_pos = sum(len(' '.join(sentences[:current_chunk_start])) + 1
+                                    for current_chunk_start in range(len(current_chunk)))
+                chunk_end_pos = chunk_start_pos + len(chunk_text)
+
+                chunk_start_line = map_content_position_to_original_line(chunk_start_pos)
+                chunk_end_line = map_content_position_to_original_line(chunk_end_pos)
 
                 chunk = Chunk(
                     text=chunk_text,
@@ -178,9 +201,10 @@ class EmailChunker:
                 current_chunk = overlap_sentences + [sentence]
                 current_tokens = sum(self.estimate_tokens(s) for s in current_chunk)
 
-                # Update line start for next chunk (approximate)
-                overlap_line_count = len(' '.join(overlap_sentences).split('\n'))
-                chunk_start_line = chunk_end_line - overlap_line_count + 1
+                # Update line start for next chunk using email mappings
+                overlap_start_pos = sum(len(' '.join(sentences[:len(current_chunk) - len(overlap_sentences)])) + 1
+                                      for _ in range(len(overlap_sentences)))
+                chunk_start_line = map_content_position_to_original_line(overlap_start_pos)
             else:
                 current_chunk.append(sentence)
                 current_tokens += sentence_tokens
@@ -189,8 +213,14 @@ class EmailChunker:
         if current_chunk:
             chunk_text = ' '.join(current_chunk)
             chunk_id = f"{thread_id}_chunk_{len(chunks) + 1}"
-            chunk_line_count = len(chunk_text.split('\n'))
-            chunk_end_line = chunk_start_line + chunk_line_count - 1
+
+            # Map final chunk positions using email mappings
+            final_chunk_start_pos = sum(len(' '.join(sentences[:len(sentences) - len(current_chunk)])) + 1
+                                      for _ in range(len(current_chunk)))
+            final_chunk_end_pos = final_chunk_start_pos + len(chunk_text)
+
+            chunk_start_line = map_content_position_to_original_line(final_chunk_start_pos)
+            chunk_end_line = map_content_position_to_original_line(final_chunk_end_pos)
 
             chunk = Chunk(
                 text=chunk_text,
