@@ -19,7 +19,6 @@ def analyzer_agent(state: OverallState) -> OverallState:
     model = ChatOpenAI(
         model=model_config.chat_model,
         temperature=max(0.7, model_config.temperature),
-        model_kwargs={"response_format": {"type": "json_object"}},
     )
     system_prompt = get_analyzer_system_prompt()
 
@@ -51,8 +50,10 @@ def analyzer_agent(state: OverallState) -> OverallState:
         ]
         response_msg = model.invoke(messages)
         response_text = getattr(response_msg, "content", response_msg)
+        # Parse YAML (no code fences expected)
         try:
-            response = json.loads(response_text)
+            import yaml
+            response = yaml.safe_load(response_text)
         except Exception:
             response = response_text
 
