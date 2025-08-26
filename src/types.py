@@ -27,6 +27,11 @@ class FlagItem(TypedDict, total=False):
     timestamp: str
     confidence: Confidence
     score: float
+    # Optional validation fields (set by verifier)
+    validation_status: str  # e.g., "VERIFIED", "REJECTED"
+    validation_notes: str
+    rejection_reason: str
+    
 
 class ChunkMetadata(TypedDict, total=False):
     """Metadata for text chunks."""
@@ -58,12 +63,9 @@ class EmailData(TypedDict, total=False):
     cc_recipients: List[Dict[str, str]]
     date: str
     date_normalized: str
-    epoch_timestamp: Optional[int]
     subject: str
     canonical_subject: str
     body: str
-    body_length: int
-    email_index: int
 
 class ThreadData(TypedDict, total=False):
     """Email thread data structure."""
