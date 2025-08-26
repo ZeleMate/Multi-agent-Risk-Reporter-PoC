@@ -17,7 +17,7 @@ help:
 	@echo ""
 	@echo "Multi-agent Pipeline:"
 	@echo "  run        - Execute the LangGraph pipeline (stdout prints Markdown)"
-	@echo "  report     - Write final markdown to ./report/portfolio_health.md"
+	@echo "  report     - Write final markdown to ./data/report/portfolio_health.md"
 	@echo ""
 	@echo "Quality & Testing:"
 	@echo "  lint       - Run code quality checks (Black, Ruff, Mypy, Bandit)"
@@ -36,7 +36,7 @@ UV_VENV := $(UV) run
 DATA_RAW := ./data/raw
 DATA_CLEAN := ./data/clean
 VECTORSTORE_DIR := .vectorstore
-REPORT_DIR := ./report
+REPORT_DIR := ./data/report
 
 # Setup virtual environment and install dependencies
 setup:
@@ -61,13 +61,13 @@ index:
 # Run the complete LangGraph pipeline
 run:
 	@echo "Running multi-agent pipeline..."
-	$(UV_VENV) -m src.graph.app --input-dir $(DATA_CLEAN) --vectorstore-dir $(VECTORSTORE_DIR)
+	$(UV_VENV) -m src.agents.graph --vectorstore-dir $(VECTORSTORE_DIR)
 
 # Generate final report
 report:
 	@echo "Generating final report..."
 	@mkdir -p $(REPORT_DIR)
-	$(UV_VENV) -m src.graph.app --input-dir $(DATA_CLEAN) --vectorstore-dir $(VECTORSTORE_DIR) --output-file $(REPORT_DIR)/portfolio_health.md
+	$(UV_VENV) -m src.agents.graph --vectorstore-dir $(VECTORSTORE_DIR) --output-file $(REPORT_DIR)/portfolio_health.md
 	@echo "Report generated at $(REPORT_DIR)/portfolio_health.md"
 
 # Code quality checks
