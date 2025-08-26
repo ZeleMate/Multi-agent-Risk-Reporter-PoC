@@ -12,7 +12,6 @@ flags:
 scoring:
   repeat_weight: 0.5
   topic_weight: 0.7
-  age_weight: 0.8
   role_weight: 1.0
 
 chunking:

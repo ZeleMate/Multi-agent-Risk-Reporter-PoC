@@ -5,23 +5,19 @@
 primary_model:
   provider: openai
   chat_model: "gpt-5-mini"
-  temperature: 0.1
-  max_output_tokens: 800
-  json_response: true
+  temperature: 0.7
+  max_output_tokens: 50000
 
 # Alternative model option (if available)
 alternative_model:
   provider: openai
   chat_model: "gpt-5"
-  temperature: 0.1
-  max_output_tokens: 800
-  json_response: true
+  temperature: 0.7
+  max_output_tokens: 50000
 
 # Embedding model (separate from generative models)
 embedding_model:
-  provider: qwen
   model_name: "Qwen/Qwen3-Embedding-0.6B"
-  dimensions: 1024
 
 # Model selection for different agent types
 agent_models:
@@ -29,8 +25,4 @@ agent_models:
   verifier: "primary_model"    # Evidence validation - needs reasoning
   composer: "alternative_model" # Report generation - can use more capable model
 
-# Fallback settings
-fallback:
-  max_retries: 3
-  timeout: 30
-  enable_fallback_to_primary: true
+
