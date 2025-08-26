@@ -8,6 +8,10 @@ import logging
 import re
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
+import os
+
+# Disable parallelism in tokenizers BEFORE importing transformers to avoid fork warnings/deadlocks
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import chromadb
 from chromadb.config import Settings
@@ -44,6 +48,8 @@ class HybridRetriever:
     def initialize(self):
         """Initialize ChromaDB client and embedding model."""
         try:
+            # Avoid tokenizers parallelism + fork warnings/deadlocks
+            os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
             # Initialize ChromaDB client
             self.client = chromadb.PersistentClient(
                 path=self.persist_directory,
@@ -150,7 +156,7 @@ class HybridRetriever:
             logger.error(f"Failed to generate query embedding: {e}")
             raise
 
-    def semantic_search(self, query: str, candidate_ids: List[str], top_k: int = 10) -> List[Dict[str, Any]]:
+    def semantic_search(self, query: str, candidate_ids: Optional[List[str]] = None, top_k: int = 10) -> List[Dict[str, Any]]:
         """
         Perform semantic search using vector similarity.
 
@@ -163,9 +169,6 @@ class HybridRetriever:
             List of search results with metadata
         """
         try:
-            if not candidate_ids:
-                return []
-
             # Generate query embedding using Qwen model
             query_embedding = self.generate_query_embedding(query)
 
@@ -177,21 +180,33 @@ class HybridRetriever:
                 include=['documents', 'metadatas', 'distances']
             )
 
+            # Normalize result structure to lists-of-lists (Chroma may return flat lists)
+            if isinstance(results, dict):
+                for key in ['ids', 'documents', 'metadatas', 'distances']:
+                    if key in results and isinstance(results[key], list) and results[key]:
+                        if not isinstance(results[key][0], list):
+                            results[key] = [results[key]]
+
             # If we have candidate IDs, filter the results
             if candidate_ids:
-                filtered_results = []
-                for i, doc_id in enumerate(results['ids'][0] if results['ids'] else []):
+                filtered_indices = []
+                ids0 = results.get('ids', [])
+                ids0 = ids0[0] if isinstance(ids0, list) and ids0 else []
+                for i, doc_id in enumerate(ids0):
                     if doc_id in candidate_ids:
-                        filtered_results.append(i)
-                # Keep only the filtered results
-                if filtered_results:
-                    for key in results:
-                        if isinstance(results[key], list) and len(results[key]) > 0:
-                            results[key][0] = [results[key][0][i] for i in filtered_results][:min(len(filtered_results), top_k)]
+                        filtered_indices.append(i)
+                if filtered_indices:
+                    for key in ['ids', 'documents', 'metadatas', 'distances']:
+                        val = results.get(key)
+                        if isinstance(val, list) and val:
+                            seq = val[0]
+                            if isinstance(seq, list):
+                                results[key][0] = [seq[i] for i in filtered_indices][:min(len(filtered_indices), top_k)]
                 else:
-                    # If no candidates match, return empty
-                    for key in results:
-                        if isinstance(results[key], list) and len(results[key]) > 0:
+                    # No overlap with candidate_ids; fall back to empty filtered result lists
+                    for key in ['ids', 'documents', 'metadatas', 'distances']:
+                        val = results.get(key)
+                        if isinstance(val, list) and val:
                             results[key][0] = []
 
             # Format results
@@ -231,15 +246,18 @@ class HybridRetriever:
         try:
             k = top_k or self.top_k
 
-            # Step 1: Keyword-based prefiltering
-            candidate_ids = self.keyword_prefilter(query)
+            # Step 1: Keyword-based prefiltering (optional)
+            candidate_ids: Optional[List[str]]
+            if self.prefilter_keywords:
+                candidate_ids = self.keyword_prefilter(query)
+                if not candidate_ids:
+                    logger.info("No candidates from keyword prefiltering; falling back to pure semantic search")
+                    candidate_ids = None
+            else:
+                candidate_ids = None
 
-            if not candidate_ids:
-                logger.info("No candidates found from keyword prefiltering")
-                return []
-
-            # Step 2: Semantic search on candidates
-            results = self.semantic_search(query, candidate_ids, top_k=k)
+            # Step 2: Semantic search
+            results = self.semantic_search(query, candidate_ids=candidate_ids, top_k=k)
 
             # Sort by score (highest first)
             results.sort(key=lambda x: x['score'], reverse=True)
