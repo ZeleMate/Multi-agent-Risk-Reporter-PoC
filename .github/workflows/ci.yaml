@@ -33,7 +33,7 @@ jobs:
 
       - name: Install lint tools
         run: |
-          uv sync --dev
+          uv sync --extra dev --extra test
 
       - name: Black (repo)
         run: uv run black --check . --line-length=100
@@ -74,7 +74,7 @@ jobs:
 
       - name: Install project (editable)
         run: |
-          uv sync --dev
+          uv sync --extra dev --extra test
 
       - name: Import smoke (no heavy deps)
         run: |
