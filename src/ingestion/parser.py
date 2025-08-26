@@ -5,6 +5,7 @@ import json
 import hashlib
 from typing import List, Dict, Any, Optional
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from src.ingestion.pii import PIIRedactor
@@ -343,7 +344,7 @@ def parse_recipients(recipients_str: str) -> List[Dict[str, str]]:
     
     return recipients
 
-def process_email_data(input_dir: str, output_dir: str) -> None:
+def process_email_data(input_dir: str, output_dir: str, workers: Optional[int] = None) -> None:
     """
     Process all email threads and colleagues data, then save structured output.
     """
@@ -406,12 +407,22 @@ def process_email_data(input_dir: str, output_dir: str) -> None:
                 if file.startswith('email') and file.endswith('.txt'):
                     email_files.append(os.path.join(root, file))
         
-        # Parse each email thread
+        # Parse each email thread (parallel)
         all_threads = []
-        for email_file in sorted(email_files):
-            thread_data = parse_email_thread(email_file, colleagues, redactor)
-            if thread_data:
-                all_threads.append(thread_data)
+        sorted_files = sorted(email_files)
+        max_workers = workers or max(4, (os.cpu_count() or 4))
+
+        def _parse_wrapper(path: str) -> Optional[Dict[str, Any]]:
+            try:
+                return parse_email_thread(path, colleagues, redactor)
+            except Exception as e:
+                logger.error(f"Error parsing file {path}: {e}")
+                return None
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for result in executor.map(_parse_wrapper, sorted_files):
+                if result:
+                    all_threads.append(result)
         
         # Save all threads data
         threads_output_path = os.path.join(output_dir, 'email_threads.json')
@@ -462,6 +473,7 @@ if __name__ == "__main__":
     app_config = get_config()
     parser.add_argument("--input-dir", type=str, default=app_config.data_raw, help="Input directory containing email files")
     parser.add_argument("--output-dir", type=str, default=app_config.data_clean, help="Output directory to save parsed data")
+    parser.add_argument("--workers", type=int, default=max(4, (os.cpu_count() or 4)), help="Number of parallel workers for parsing")
     args = parser.parse_args()
 
-    process_email_data(args.input_dir, args.output_dir)
+    process_email_data(args.input_dir, args.output_dir, workers=args.workers)
