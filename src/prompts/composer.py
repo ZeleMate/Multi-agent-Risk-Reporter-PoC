@@ -6,50 +6,46 @@ Report generation and executive summary prompts.
 from typing import List, Dict, Any
 from ..types import FlagItem
 
-def get_composer_prompt(verified_risks: List[FlagItem], project_context: str = "", config: Dict[str, Any] = None) -> str:
+def _escape_braces(text: str) -> str:
+    return text.replace("{", "{{").replace("}", "}}")
+
+def get_composer_prompt(verified_risks: List[FlagItem], project_context: str = "") -> str:
     """
     Generate composer prompt for executive report creation - PORTFOLIO HEALTH FOCUS.
 
     Args:
         verified_risks: List of verified risks from verifier
         project_context: Additional project context
-        config: Pipeline configuration
 
     Returns:
         Formatted prompt for composer agent
     """
-
-    if config is None:
-        config = {
-            "report": {"top_n_per_project": 5}
-        }
 
     # Format verified risks with enhanced detail
     risks_text = ""
     for i, risk in enumerate(verified_risks, 1):
         risks_text += f"""
 RISK {i}:
-🏷️  Type: {risk.get('label', 'Unknown').upper()}
-📝 Title: {risk.get('title', 'Unknown')}
-📋 Reason: {risk.get('reason', 'Unknown')}
-👤 Owner: {risk.get('owner_hint', 'Unknown')}
-✅ Next Step: {risk.get('next_step', 'Unknown')}
-🔒 Confidence: {risk.get('confidence', 'Unknown')}
-📊 Score: {risk.get('score', 0)}
-🧵 Thread ID: {risk.get('thread_id', 'Unknown')}
-📎 Evidence Citations: {len(risk.get('evidence', []))} references
-📅 Days Unresolved: {risk.get('days_unresolved', 0)}
-💼 Business Impact: {risk.get('business_impact', 'Unknown')}
-📝 Validation Notes: {risk.get('validation_notes', 'None')}
+Type: {risk.get('label', 'Unknown').upper()}
+Title: {_escape_braces(risk.get('title', 'Unknown'))}
+Reason: {_escape_braces(risk.get('reason', 'Unknown'))}
+Owner: {_escape_braces(risk.get('owner_hint', 'Unknown'))}
+Next Step: {_escape_braces(risk.get('next_step', 'Unknown'))}
+Confidence: {_escape_braces(risk.get('confidence', 'Unknown'))}
+Score: {risk.get('score', 0)}
+Thread ID: {_escape_braces(risk.get('thread_id', 'Unknown'))}
+Evidence Citations: {len(risk.get('evidence', []))} references
+ 
+Validation Notes: {risk.get('validation_notes', 'None')}
 
 ---
 """
 
-    prompt = f"""# 🎯 EXECUTIVE PORTFOLIO HEALTH REPORT COMPOSER
+    prompt = f"""# EXECUTIVE PORTFOLIO HEALTH REPORT COMPOSER
 
-You are a senior executive communications specialist with 20+ years of experience creating QBR (Quarterly Business Review) materials for Directors of Engineering. Your expertise is in distilling complex technical risks into clear, actionable executive insights that drive strategic decision-making.
+Your expertise is in distilling complex technical risks into clear, actionable executive insights that drive strategic decision-making.
 
-## 🎯 BUSINESS MISSION
+## BUSINESS MISSION
 
 You are creating a **Portfolio Health Report** for a **Director of Engineering** preparing for their **QBR**. This report must help the Director:
 
@@ -58,14 +54,13 @@ You are creating a **Portfolio Health Report** for a **Director of Engineering**
 - **Make informed decisions** about resource allocation and risk mitigation
 - **Prepare** compelling QBR narratives about portfolio health
 
-## 📊 REPORT ARCHITECTURE
+## REPORT ARCHITECTURE
 
 ### **1. Executive TL;DR (3-6 bullets)**
 **Purpose**: Immediate understanding of portfolio health in 30 seconds
 - **Score-ordered**: Highest impact first
 - **Business impact**: Focus on delivery, cost, quality, reputation, team efficiency
 - **Actionable**: Clear next steps for each risk
-- **Executive language**: No technical jargon
 
 ### **2. Risk Details Table**
 **Purpose**: Detailed breakdown for decision-making
@@ -75,23 +70,15 @@ You are creating a **Portfolio Health Report** for a **Director of Engineering**
 - **Why it matters**: Business impact explanation
 - **Owner**: Who should address this (role-based)
 - **Next step**: Specific action (≤15 words)
-- **Evidence**: File:line citations for credibility
+- **Evidence**: file:line (thread_id). If multiple citations, separate with "; ".
+- **Conf/Score**: confidence (high/mid/low) and score rounded to 2 decimals
 
 ### **3. Evidence Appendix**
 **Purpose**: Validation and transparency
-- **Up to 2 lines** per risk
+- **All of the lines for each risk
 - **Exact quotes** from source emails
 - **File:line citations** included
 - **Chronological order** when possible
-
-## 🧠 EXECUTIVE MINDSET FRAMEWORK
-
-### **What Directors Actually Care About:**
-1. **Schedule Impact**: Will this delay delivery or milestones?
-2. **Resource Impact**: Does this require reallocation or hiring?
-3. **Financial Impact**: Could this increase costs or affect revenue?
-4. **Customer Impact**: Does this affect product quality or customer experience?
-5. **Reputational Impact**: Could this damage team or company reputation?
 
 ### **QBR Preparation Focus:**
 - **Portfolio-level insights**: Not individual project details
@@ -99,30 +86,29 @@ You are creating a **Portfolio Health Report** for a **Director of Engineering**
 - **Executive actions**: What decisions need my involvement?
 - **Risk prioritization**: Where should I focus my limited time?
 
-## 📋 STRICT COMPOSITION RULES
+## COMPOSITION RULES
 
 ### **MANDATORY CONSTRAINTS:**
-- ❌ **NEVER** invent information not in the verified risks
-- ❌ **NEVER** add assumptions or speculation
-- ❌ **NEVER** use technical jargon without business context
-- ❌ **NEVER** create risks that aren't in the input data
-- ✅ **ONLY** use information from verified_risks
-- ✅ **ONLY** reference actual evidence citations
-- ✅ **ONLY** maintain executive-level perspective
+- **DON'T** invent information not in the verified risks
+- **DON'T** add assumptions or speculation
+- **DON'T** use technical jargon without business context
+- **DON'T** create risks that aren't in the input data
+- **USE** information from verified_risks
+- **USE** reference actual evidence citations
+- **USE** maintain executive-level perspective
 
 ### **QUALITY STANDARDS:**
-- **Evidence-based**: Every claim must be supported by citations
+- **Evidence-based**: Every claim has to be supported by citations
 - **Business-focused**: Frame everything in terms of business impact
 - **Action-oriented**: Clear next steps for every risk
-- **Concise**: Executive attention span is limited
 - **Professional**: Appropriate for C-suite consumption
 
-## 📤 OUTPUT SPECIFICATIONS
+## OUTPUT SPECIFICATIONS
 
-Return **ONLY** the complete report in Markdown format:
+Return the complete report in Markdown format:
 
 ```markdown
-# 📊 Portfolio Health Report - QBR Preparation
+# Portfolio Health Report - QBR Preparation
 ## Executive Summary
 
 - **CRITICAL**: Production filename bug affecting user profile uploads, 3 weeks unresolved
@@ -131,11 +117,11 @@ Return **ONLY** the complete report in Markdown format:
 
 ## Risk Details
 
-| Type | Title | Why it matters | Owner | Next step | Evidence |
-|------|-------|----------------|--------|-----------|----------|
-| ERB | Staging environment filename bug affects production readiness | Profile picture uploads fail when filenames contain spaces, initially misdiagnosed as cache issue, affects user experience | Developer | Fix filename validation logic immediately | email1.txt:25-35 |
-| UHPAI | Cross-project communication confusion needs process fix | Design updates posted in wrong project correspondence, leading to confusion and potential missed updates | PM | Establish clear project communication guidelines | email2.txt:10-15 |
-| UHPAI | Production bug introduced by recent commit requires immediate fix | Developer admitted to introducing filename validation bug through recent changes, needs immediate attention | Developer | Fix filename validation bug today | email1.txt:40-45 |
+| Type | Title | Why it matters | Owner | Next step | Evidence | Conf/Score |
+|------|-------|----------------|--------|-----------|----------|------------|
+| ERB | Staging filename bug affects readiness | Filenames with spaces cause 404s; customer risk | Developer | Fix validation logic + tests | email1.txt:25-35 (thread_abc) | high / 4.80 |
+| UHPAI | Cross-project comms confusion | Wrong thread posts cause missed updates | PM | Set channel guidelines | email2.txt:10-15 (thread_def) | mid / 3.20 |
+| UHPAI | Production bug requires fix | Bug introduced by recent commit; blocks delivery | Developer | Fix today | email1.txt:40-45 (thread_abc) | high / 4.90 |
 
 ## Evidence Appendix
 
@@ -149,13 +135,22 @@ Return **ONLY** the complete report in Markdown format:
 "Yes, it did. I rewrote the filename validation to replace special characters. It's possible the frontend isn't receiving the modified filename. My apologies, I'll check it immediately. This is clearly my mistake." (email1.txt:40-45)
 ```
 
-## 📊 VERIFIED RISKS TO PROCESS
+## VERIFIED RISKS TO PROCESS
 {risks_text}
 
-## 📋 PROJECT CONTEXT
+## PROJECT CONTEXT
 {project_context}
 
-## 🚀 EXECUTION FRAMEWORK
+## PII REDACTION
+
+Redact all personally identifiable information (PII) with a special token, including:
+  - Names with [NAME] token.
+  - Emails with [EMAIL] token.
+  - Person IDs with [PERSON] token.
+
+**No personal information can be included in the output.**
+
+## EXECUTION FRAMEWORK
 
 **Your Mission**: Transform verified risks into a compelling QBR narrative that drives executive action.
 
@@ -173,15 +168,9 @@ Return **ONLY** the complete report in Markdown format:
 - **Strategic**: Portfolio-level implications
 - **Professional**: Appropriate for executive consumption
 
-**QBR Preparation Mindset:**
-- Think like a Director: "What would I want to know if I were presenting to the CEO?"
-- Focus on: "What decisions need my involvement?"
-- Prioritize: "Where should I focus my limited time?"
-- Contextualize: "How does this affect our quarterly objectives?"
-
 Compose the executive portfolio health report that will drive strategic decision-making at the highest levels."""
 
-    return prompt
+    return _escape_braces(prompt)
 
 def get_composer_system_prompt() -> str:
     """Get the system prompt for composer agent."""
@@ -221,11 +210,11 @@ def get_composer_report_templates() -> Dict[str, str]:
 {evidence_entries}
 """,
 
-        "empty_report": """# 📊 Portfolio Health Report - QBR Preparation
+        "empty_report": """# Portfolio Health Report - QBR Preparation
 
 ## Executive Summary
 
-✅ **No critical risks identified** in the current portfolio analysis.
+**No critical risks identified** in the current portfolio analysis.
 
 **Overall Risk Assessment:** Low
 **Immediate Actions Required:** None

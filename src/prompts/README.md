@@ -26,7 +26,6 @@ src/prompts/
 **Key Functions**:
 - `get_analyzer_prompt()`: Main analysis prompt with portfolio-level focus
 - `get_analyzer_system_prompt()`: System prompt for technical program manager expertise
-- `get_analyzer_fewshot_examples()`: Real-world examples from project emails
 
 **Critical Features**:
 - **UHPAI Detection**: Unresolved High-Priority Action Items (>5 days old)
