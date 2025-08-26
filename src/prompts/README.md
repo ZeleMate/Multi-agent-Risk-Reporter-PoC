@@ -106,7 +106,7 @@ score = role_weight + (age_weight × days_unresolved) + topic_weight + repeat_we
 
 **Report Structure**:
 ```markdown
-# 📊 Portfolio Health Report - QBR Preparation
+# Portfolio Health Report - QBR Preparation
 ## Executive Summary
 
 - **CRITICAL**: Production filename bug affecting user profile uploads, 3 weeks unresolved
