@@ -23,7 +23,7 @@ graph TD
 
     subgraph "Vector Layer"
         C1[Qwen Embedding Model] --> C2[ChromaDB Store]
-        C2 --> C3[Hybrid Retrieval]
+        C2 --> C3[Hybrid Retrieval (optional prefilter)]
     end
 
     subgraph "AI Agents"
@@ -169,7 +169,7 @@ You are a senior technical program manager analyzing project communications for 
 - Technical blockers/dependencies
 
 ## 📤 OUTPUT REQUIREMENTS
-Return JSON with identified risks including file:line citations and business impact assessment.
+Return JSON with identified risks including file:line citations.
 
 ## 📊 ANALYSIS FRAMEWORK
 1. Read every word carefully
@@ -236,7 +236,7 @@ Generate executive-ready Portfolio Health Report."""
 
 ### Risk Priority Scoring Algorithm
 
-**Formula**: `score = role_weight + (age_weight × days_unresolved) + topic_weight + repeat_weight`
+**Formula**: `score = role_weight + topic_weight + repeat_weight`
 
 #### 1. **Role Weight** (1.0 base multiplier)
 **Justification**: Executive attention prioritization based on organizational hierarchy and decision-making authority
@@ -248,25 +248,11 @@ Generate executive-ready Portfolio Health Report."""
 
 **Business Rationale**: Issues involving higher-level stakeholders typically have broader impact and require more immediate attention.
 
-#### 2. **Age Weight** (0.8 multiplier × days_unresolved)
-**Justification**: Time-based urgency escalation for unresolved issues
+#### 2. **Topic Weight** (0.7 base score)
+See keyword guidance below.
 
-**Age Calculation**:
-- **Current date**: System processes email with current timestamp
-- **Issue date**: Timestamp of the email containing the issue
-- **Days unresolved**: `(current_date - issue_date).days`
-- **UHPAI threshold**: Issues > 5 days automatically flagged as high-priority
-
-**Linear Escalation**:
-- **Day 1-5**: Normal resolution timeframe (no age penalty)
-- **Day 6+**: Each day adds 0.8 points to the score
-- **Executive concern**: Issues > 30 days get maximum age weighting
-- **Schedule impact**: Unresolved items increasingly likely to affect delivery milestones
-
-**Business Rationale**: The longer an issue remains unresolved, the greater the risk to project delivery and the more likely it is to cascade into multiple dependent tasks, requiring executive intervention.
-
-#### 3. **Topic Weight** (0.7 base score)
-**Justification**: Content relevance scoring based on keyword matching with risk-related terms
+#### 3. **Repeat Weight** (0.5 base score per mention)
+**Justification**: Frequency-based importance amplification through multiple email threads
 
 **Complete Prefilter Keywords List**:
 - **Blocker terms**: "blocked", "waiting on", "missing", "unclear", "cannot"
@@ -313,8 +299,8 @@ Generate executive-ready Portfolio Health Report."""
 
 **Business Impact Integration**: The system uses business impact assessment to prioritize issues within the same score range, ensuring executives see the most strategically important issues first.
 
-#### 4. **Repeat Weight** (0.5 base score per mention)
-**Justification**: Frequency-based importance amplification through multiple email threads
+#### 4. **Topic Weight** (0.7 base score)
+**Justification**: Content relevance scoring based on keyword matching with risk-related terms
 
 **Scoring Logic**:
 - **0.0 points**: Issue mentioned in only one email thread
