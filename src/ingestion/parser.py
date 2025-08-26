@@ -154,14 +154,15 @@ def parse_email_thread(email_path: str, colleagues: Dict[str, Dict[str, str]], r
         
         # Create thread summary with stable hash-based thread_id
         if emails:
-            # Create stable thread identifier using hash of key components
+            # Create stable thread identifier using hash of key components + file path to avoid collisions
             canonical_subject = emails[0].get('canonical_subject', '')
             participants = list(set([email['sender_email'] for email in emails]))
             participants_str = '_'.join(sorted(participants))
 
-            # Use file path and content hash for stable ID
+            file_abs_path = os.path.abspath(email_path)
+
             content_hash = hashlib.sha1(
-                f"{canonical_subject}_{participants_str}_{len(emails)}".encode()
+                f"{canonical_subject}_{participants_str}_{len(emails)}_{file_abs_path}".encode('utf-8')
             ).hexdigest()[:12]
 
             thread_id = f"thread_{content_hash}"
@@ -233,16 +234,19 @@ def parse_single_email(email_content: str, colleagues: Dict[str, Dict[str, str]]
     Parse a single email from the thread content.
     """
     try:
-        # Extract From field - handle multiple formats:
+        # Extract From field - handle multiple formats and Unicode emails:
         # "Name email@domain.com", "Name <email@domain.com>", "Name (email@domain.com)"
         from_line = email_content.split('\n')[0]
-        from_match = re.search(r'From:\s*(.+?)\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', from_line)
+        # Allow Unicode in local-part; keep ASCII domain/TLD
+        email_re = r'[^<>\s()]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}'
+        # Try angle brackets first
+        from_match = re.search(rf'From:\s*(.+?)\s*<({email_re})>', from_line)
         if not from_match:
-            # Try format with angle brackets
-            from_match = re.search(r'From:\s*(.+?)\s*<([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>', from_line)
+            # Try parentheses form
+            from_match = re.search(rf'From:\s*(.+?)\s*\(({email_re})\)', from_line)
             if not from_match:
-                # Try format with parentheses
-                from_match = re.search(r'From:\s*(.+?)\s*\(([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)', from_line)
+                # Try whitespace-separated name + email
+                from_match = re.search(rf'From:\s*(.+?)\s+({email_re})', from_line)
                 if not from_match:
                     logger.warning(f"Could not parse From line: {from_line}")
                     return None
@@ -331,8 +335,8 @@ def parse_recipients(recipients_str: str) -> List[Dict[str, str]]:
         if not recipient:
             continue
         
-        # Try to extract email and name
-        email_match = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', recipient)
+        # Try to extract email and name (allow Unicode in local-part)
+        email_match = re.search(r'([^<>\s()]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})', recipient)
         if email_match:
             email = email_match.group(1)
             # Remove email from recipient string to get name
