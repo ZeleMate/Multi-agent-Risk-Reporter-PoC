@@ -3,11 +3,11 @@ Configuration management for the multi-agent risk reporter.
 Loads settings from YAML files and environment variables.
 """
 
-import os
 import logging
-from typing import Dict, Any, List, Optional
-from pathlib import Path
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
@@ -17,84 +17,129 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
+
 @dataclass
 class ModelConfig:
     """Configuration for LLM models."""
+
     provider: str = "openai"
     chat_model: str = "gpt-5-mini"
     temperature: float = 0.7
     max_output_tokens: int = 50000
 
+
 @dataclass
 class EmbeddingConfig:
     """Configuration for embedding models."""
+
     model_name: str = "Qwen/Qwen3-Embedding-0.6B"
+
 
 @dataclass
 class AgentModelsConfig:
     """Configuration for agent-specific models."""
-    analyzer: str = "primary_model"    # Risk classification
-    verifier: str = "primary_model"    # Evidence validation
-    composer: str = "alternative_model" # Report generation (can use more capable model)
+
+    analyzer: str = "primary_model"  # Risk classification
+    verifier: str = "primary_model"  # Evidence validation
+    composer: str = "alternative_model"  # Report generation (can use more capable model)
+
 
 @dataclass
 class AlternativeModelConfig:
     """Configuration for alternative model."""
+
     provider: str = "openai"
     chat_model: str = "gpt-5"
     temperature: float = 0.7
     max_output_tokens: int = 50000
 
+
 @dataclass
 class RetrievalConfig:
     """Configuration for retrieval system."""
+
     top_k: int = 10
-    prefilter_keywords: List[str] = field(default_factory=lambda: [
-        "blocker", "risk", "delayed", "waiting", "asap", "urgent", "deadline",
-        "unresolved", "issue", "problem", "critical", "high priority", "error",
-        "bug", "missing", "incomplete", "clarification", "question", "help"
-    ])
+    prefilter_keywords: list[str] = field(
+        default_factory=lambda: [
+            "blocker",
+            "risk",
+            "delayed",
+            "waiting",
+            "asap",
+            "urgent",
+            "deadline",
+            "unresolved",
+            "issue",
+            "problem",
+            "critical",
+            "high priority",
+            "error",
+            "bug",
+            "missing",
+            "incomplete",
+            "clarification",
+            "question",
+            "help",
+        ]
+    )
+
 
 @dataclass
 class ChunkingConfig:
     """Configuration for text chunking."""
+
     chunk_size: int = 1000  # Target tokens per chunk
-    overlap: int = 100      # Overlap tokens between chunks
+    overlap: int = 100  # Overlap tokens between chunks
+
 
 @dataclass
 class FlagsConfig:
     """Configuration for risk flags."""
-    uhpai: Dict[str, Any] = field(default_factory=lambda: {
-        "aging_days": 5,
-        "role_weights": {
-            "director": 2.0,
-            "pm": 1.5,
-            "ba": 1.2,
-            "dev": 1.0
+
+    uhpai: dict[str, Any] = field(
+        default_factory=lambda: {
+            "aging_days": 5,
+            "role_weights": {"director": 2.0, "pm": 1.5, "ba": 1.2, "dev": 1.0},
         }
-    })
-    erb: Dict[str, Any] = field(default_factory=lambda: {
-        "critical_terms": [
-            "blocked", "waiting on", "missing", "unclear", "cannot",
-            "security", "payment", "prod", "critical", "urgent"
-        ]
-    })
+    )
+    erb: dict[str, Any] = field(
+        default_factory=lambda: {
+            "critical_terms": [
+                "blocked",
+                "waiting on",
+                "missing",
+                "unclear",
+                "cannot",
+                "security",
+                "payment",
+                "prod",
+                "critical",
+                "urgent",
+            ]
+        }
+    )
+
 
 @dataclass
 class ScoringConfig:
     """Configuration for scoring system."""
+
     repeat_weight: float = 0.5
     topic_weight: float = 0.7
     role_weight: float = 1.0
 
+
 @dataclass
 class ReportConfig:
     """Configuration for report generation."""
+
     top_n_per_project: int = 5
+
 
 @dataclass
 class AppConfig:
     """Main application configuration."""
+
     # Paths
     data_raw: str = "./data/raw"
     data_clean: str = "./data/clean"
@@ -102,7 +147,7 @@ class AppConfig:
     report_dir: str = "./data/report"
 
     # API Keys
-    openai_api_key: Optional[str] = None
+    openai_api_key: str | None = None
 
     # Components
     model: ModelConfig = field(default_factory=ModelConfig)
@@ -121,10 +166,12 @@ class AppConfig:
         """Load API key from environment."""
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
 
+
 class ConfigManager:
     """Manages configuration loading and validation."""
+
     @staticmethod
-    def _filter_dataclass_kwargs(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _filter_dataclass_kwargs(cls, data: dict[str, Any]) -> dict[str, Any]:
         """Filter incoming dict to only include kwargs that exist on the dataclass."""
         if not isinstance(data, dict):
             return {}
@@ -132,10 +179,10 @@ class ConfigManager:
         return {k: v for k, v in data.items() if k in field_names}
 
     @staticmethod
-    def load_from_yaml(yaml_path: str) -> Dict[str, Any]:
+    def load_from_yaml(yaml_path: str) -> dict[str, Any]:
         """Load configuration from YAML file."""
         try:
-            with open(yaml_path, 'r', encoding='utf-8') as f:
+            with open(yaml_path, encoding="utf-8") as f:
                 return yaml.safe_load(f)
         except FileNotFoundError:
             logger.warning(f"Configuration file {yaml_path} not found, using defaults")
@@ -149,7 +196,7 @@ class ConfigManager:
         cls,
         config_dir: str = "./configs",
         model_config_file: str = "model.yaml",
-        pipeline_config_file: str = "pipeline.yaml"
+        pipeline_config_file: str = "pipeline.yaml",
     ) -> AppConfig:
         """Load complete application configuration."""
         try:
@@ -163,17 +210,23 @@ class ConfigManager:
                 if model_data:
                     # Load primary model config
                     if "primary_model" in model_data:
-                        primary_data = cls._filter_dataclass_kwargs(ModelConfig, model_data["primary_model"])
+                        primary_data = cls._filter_dataclass_kwargs(
+                            ModelConfig, model_data["primary_model"]
+                        )
                         config.model = ModelConfig(**primary_data)
 
                     # Load embedding config
                     if "embedding_model" in model_data:
-                        embedding_data = cls._filter_dataclass_kwargs(EmbeddingConfig, model_data["embedding_model"])
+                        embedding_data = cls._filter_dataclass_kwargs(
+                            EmbeddingConfig, model_data["embedding_model"]
+                        )
                         config.embedding = EmbeddingConfig(**embedding_data)
 
                     # Load alternative model config
                     if "alternative_model" in model_data:
-                        alt_data = cls._filter_dataclass_kwargs(AlternativeModelConfig, model_data["alternative_model"])
+                        alt_data = cls._filter_dataclass_kwargs(
+                            AlternativeModelConfig, model_data["alternative_model"]
+                        )
                         config.alternative_model = AlternativeModelConfig(**alt_data)
                     else:
                         # Set default alternative model if not specified
@@ -181,7 +234,9 @@ class ConfigManager:
 
                     # Load agent models config
                     if "agent_models" in model_data:
-                        agent_data = cls._filter_dataclass_kwargs(AgentModelsConfig, model_data["agent_models"])
+                        agent_data = cls._filter_dataclass_kwargs(
+                            AgentModelsConfig, model_data["agent_models"]
+                        )
                         config.agent_models = AgentModelsConfig(**agent_data)
 
             # Load pipeline configuration
@@ -235,7 +290,7 @@ class ConfigManager:
             return AppConfig()
 
     @staticmethod
-    def validate_config(config: AppConfig) -> List[str]:
+    def validate_config(config: AppConfig) -> list[str]:
         """Validate configuration and return list of issues."""
         issues = []
 
@@ -261,8 +316,10 @@ class ConfigManager:
 
         return issues
 
+
 # Global configuration instance
-_app_config: Optional[AppConfig] = None
+_app_config: AppConfig | None = None
+
 
 def get_config() -> AppConfig:
     """Get the global application configuration."""
@@ -271,13 +328,15 @@ def get_config() -> AppConfig:
         _app_config = ConfigManager.load_config()
     return _app_config
 
+
 def reload_config() -> AppConfig:
     """Reload configuration from files."""
     global _app_config
     _app_config = ConfigManager.load_config()
     return _app_config
 
-def validate_current_config() -> List[str]:
+
+def validate_current_config() -> list[str]:
     """Validate the current configuration."""
     config = get_config()
     return ConfigManager.validate_config(config)

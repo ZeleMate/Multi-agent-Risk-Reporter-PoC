@@ -3,13 +3,16 @@ Composer Agent Prompts
 Report generation and executive summary prompts.
 """
 
-from typing import List, Dict, Any
+from typing import Any
+
 from ..types import FlagItem
+
 
 def _escape_braces(text: str) -> str:
     return text.replace("{", "{{").replace("}", "}}")
 
-def get_composer_prompt(verified_risks: List[FlagItem], project_context: str = "") -> str:
+
+def get_composer_prompt(verified_risks: list[FlagItem], project_context: str = "") -> str:
     """
     Generate composer prompt for executive report creation - PORTFOLIO HEALTH FOCUS.
 
@@ -35,7 +38,7 @@ Confidence: {_escape_braces(risk.get('confidence', 'Unknown'))}
 Score: {risk.get('score', 0)}
 Thread ID: {_escape_braces(risk.get('thread_id', 'Unknown'))}
 Evidence Citations: {len(risk.get('evidence', []))} references
- 
+
 Validation Notes: {risk.get('validation_notes', 'None')}
 
 ---
@@ -174,6 +177,7 @@ Compose the executive portfolio health report that will drive strategic decision
 
     return _escape_braces(prompt)
 
+
 def get_composer_system_prompt() -> str:
     """Get the system prompt for composer agent."""
     return """You are a senior executive communications specialist with 20+ years of experience creating QBR (Quarterly Business Review) materials for Directors of Engineering at Fortune 500 companies. Your expertise is in transforming complex technical risks into compelling executive narratives that drive strategic decision-making.
@@ -187,7 +191,8 @@ Your specialization includes:
 
 You are known for reports that are concise, business-focused, and immediately drive executive action."""
 
-def get_composer_report_templates() -> Dict[str, str]:
+
+def get_composer_report_templates() -> dict[str, str]:
     """Get report templates for different scenarios."""
     return {
         "executive_summary": """
@@ -199,19 +204,16 @@ def get_composer_report_templates() -> Dict[str, str]:
 **Immediate Actions Required:** {action_count}
 **Timeline Impact:** {timeline_impact}
 """,
-
         "risk_table": """## Risk Details
 
 | Type | Title | Why it matters | Owner | Next step | Evidence |
 |------|-------|----------------|--------|-----------|----------|
 {rows}
 """,
-
         "evidence_section": """## Evidence Appendix
 
 {evidence_entries}
 """,
-
         "empty_report": """# Portfolio Health Report - QBR Preparation
 
 ## Executive Summary
@@ -234,25 +236,24 @@ No risks requiring executive attention were identified in the email analysis.
 - Standard project communication patterns observed
 - Portfolio health is strong for QBR preparation
 - Continue monitoring for any emerging issues
-"""
+""",
     }
 
-def get_composer_formatting_rules() -> Dict[str, Any]:
+
+def get_composer_formatting_rules() -> dict[str, Any]:
     """Get formatting and style rules for reports."""
     return {
         "max_title_length": 10,
         "max_next_step_length": 15,
         "max_evidence_lines": 2,
         "executive_bullets": "3-6",
-        "table_columns": [
-            "Type", "Title", "Why it matters", "Owner", "Next step", "Evidence"
-        ],
+        "table_columns": ["Type", "Title", "Why it matters", "Owner", "Next step", "Evidence"],
         "markdown_syntax": {
             "header1": "#",
             "header2": "##",
             "header3": "###",
             "bold": "**",
             "italic": "*",
-            "table_separator": "|"
-        }
+            "table_separator": "|",
+        },
     }

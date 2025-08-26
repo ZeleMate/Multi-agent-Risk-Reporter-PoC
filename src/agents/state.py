@@ -1,12 +1,14 @@
-from typing import TypedDict, Annotated, List, Dict, Any
+from typing import Annotated, Any, TypedDict
+
 from langgraph.graph.message import add_messages
+
 from src.types import FlagItem
 
+
 class OverallState(TypedDict):
-    messages: Annotated[List[str], add_messages]
-    chunks: List[Dict[str, Any]]
+    messages: Annotated[list[str], add_messages]
+    chunks: list[dict[str, Any]]
     project_context: str
-    candidates: List[FlagItem]
-    verified: List[FlagItem]
+    candidates: list[FlagItem]
+    verified: list[FlagItem]
     report: str
-    

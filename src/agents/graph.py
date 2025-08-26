@@ -1,13 +1,16 @@
-from src.agents.state import OverallState
-from langgraph.graph import StateGraph, START, END
-from src.agents.analyzer_agent import analyzer_agent
-from src.agents.verifier_agent import verifier_agent
-from src.agents.composer_agent import composer_agent
-from src.services.config import get_config
 import argparse
 import os
+
 import chromadb
 from chromadb.config import Settings
+from langgraph.graph import END, START, StateGraph
+
+from src.agents.analyzer_agent import analyzer_agent
+from src.agents.composer_agent import composer_agent
+from src.agents.state import OverallState
+from src.agents.verifier_agent import verifier_agent
+from src.services.config import get_config
+
 
 def create_graph() -> StateGraph:
     """Create the overall graph."""
@@ -26,8 +29,11 @@ def create_graph() -> StateGraph:
 
     return graph
 
+
 def _load_all_chunks_from_chroma(vectorstore_dir: str, collection_name: str = "email_chunks"):
-    client = chromadb.PersistentClient(path=vectorstore_dir, settings=Settings(anonymized_telemetry=False))
+    client = chromadb.PersistentClient(
+        path=vectorstore_dir, settings=Settings(anonymized_telemetry=False)
+    )
     collection = client.get_collection(name=collection_name)
     total = collection.count()
     if total <= 0:
@@ -49,7 +55,9 @@ def _load_all_chunks_from_chroma(vectorstore_dir: str, collection_name: str = "e
         # Create synthetic ids if not available
         if not ids or len(ids) != len(docs):
             ids = [f"doc_{i}" for i in range(len(docs))]
-        chunks = [{"id": i, "text": d or "", "metadata": m or {}} for i, d, m in zip(ids, docs, metas)]
+        chunks = [
+            {"id": i, "text": d or "", "metadata": m or {}} for i, d, m in zip(ids, docs, metas, strict=False)
+        ]
         if chunks:
             return chunks
     except Exception:
@@ -60,14 +68,21 @@ def _load_all_chunks_from_chroma(vectorstore_dir: str, collection_name: str = "e
     page_size = 100
     while True:
         try:
-            raw = collection.get(include=["documents", "metadatas"], limit=page_size, offset=page * page_size)
+            raw = collection.get(
+                include=["documents", "metadatas"], limit=page_size, offset=page * page_size
+            )
             ids = []
             docs = raw.get("documents", []) or []
             metas = raw.get("metadatas", []) or []
             if not ids:
                 # synth ids if none provided
                 ids = [f"doc_{page*page_size + i}" for i in range(len(docs))]
-            chunks.extend([{"id": i, "text": d or "", "metadata": m or {}} for i, d, m in zip(ids, docs, metas)])
+            chunks.extend(
+                [
+                    {"id": i, "text": d or "", "metadata": m or {}}
+                    for i, d, m in zip(ids, docs, metas, strict=False)
+                ]
+            )
             if len(docs) < page_size:
                 break
             page += 1
@@ -105,7 +120,12 @@ if __name__ == "__main__":
         )
 
         # Build a deterministic aggregate query from project context and config keywords
-        keywords = list(dict.fromkeys((config.flags.erb.get("critical_terms") or []) + (config.retrieval.prefilter_keywords or [])))
+        keywords = list(
+            dict.fromkeys(
+                (config.flags.erb.get("critical_terms") or [])
+                + (config.retrieval.prefilter_keywords or [])
+            )
+        )
         project_ctx = args.project_context or "portfolio health"
         query = f"{project_ctx} " + " ".join(keywords)
 
@@ -131,13 +151,23 @@ if __name__ == "__main__":
         try:
             report_dir = getattr(config, "report_dir", "report")
             os.makedirs(report_dir, exist_ok=True)
-            with open(os.path.join(report_dir, "graph_initial_chunks.json"), "w", encoding="utf-8") as f:
+            with open(
+                os.path.join(report_dir, "graph_initial_chunks.json"), "w", encoding="utf-8"
+            ) as f:
                 import json as _json
-                _json.dump({
-                    "total_chunks": len(chunks) if isinstance(chunks, list) else 0,
-                    "sample_ids": [ch.get("id") for ch in (chunks[:5] if isinstance(chunks, list) else [])],
-                    "selected_via": selected_via
-                }, f, ensure_ascii=False, indent=2)
+
+                _json.dump(
+                    {
+                        "total_chunks": len(chunks) if isinstance(chunks, list) else 0,
+                        "sample_ids": [
+                            ch.get("id") for ch in (chunks[:5] if isinstance(chunks, list) else [])
+                        ],
+                        "selected_via": selected_via,
+                    },
+                    f,
+                    ensure_ascii=False,
+                    indent=2,
+                )
         except Exception:
             pass
 
@@ -148,7 +178,8 @@ if __name__ == "__main__":
             chunks_file = os.path.join(clean_dir, "chunks.json")
             if os.path.exists(chunks_file):
                 import json as _json
-                with open(chunks_file, "r", encoding="utf-8") as f:
+
+                with open(chunks_file, encoding="utf-8") as f:
                     chunks = _json.load(f)
         except Exception:
             chunks = []

@@ -3,22 +3,21 @@ Retrieval Module for hybrid search over email chunks.
 Combines keyword-based prefiltering with vector similarity search.
 """
 
-import json
 import logging
-import re
-from typing import List, Dict, Any, Optional, Tuple
-from pathlib import Path
 import os
+import re
+from typing import Any
 
 # Disable parallelism in tokenizers BEFORE importing transformers to avoid fork warnings/deadlocks
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import chromadb
-from chromadb.config import Settings
 import torch
+from chromadb.config import Settings
 from transformers import AutoModel, AutoTokenizer
 
 logger = logging.getLogger(__name__)
+
 
 class HybridRetriever:
     """
@@ -30,15 +29,31 @@ class HybridRetriever:
         collection_name: str = "email_chunks",
         persist_directory: str = ".vectorstore",
         top_k: int = 10,
-        prefilter_keywords: Optional[List[str]] = None
+        prefilter_keywords: list[str] | None = None,
     ):
         self.collection_name = collection_name
         self.persist_directory = persist_directory
         self.top_k = top_k
         self.prefilter_keywords = prefilter_keywords or [
-            "blocker", "risk", "delayed", "waiting", "asap", "urgent", "deadline",
-            "unresolved", "issue", "problem", "critical", "high priority", "error",
-            "bug", "missing", "incomplete", "clarification", "question", "help"
+            "blocker",
+            "risk",
+            "delayed",
+            "waiting",
+            "asap",
+            "urgent",
+            "deadline",
+            "unresolved",
+            "issue",
+            "problem",
+            "critical",
+            "high priority",
+            "error",
+            "bug",
+            "missing",
+            "incomplete",
+            "clarification",
+            "question",
+            "help",
         ]
 
         self.client = None
@@ -52,13 +67,13 @@ class HybridRetriever:
             os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
             # Initialize ChromaDB client
             self.client = chromadb.PersistentClient(
-                path=self.persist_directory,
-                settings=Settings(anonymized_telemetry=False)
+                path=self.persist_directory, settings=Settings(anonymized_telemetry=False)
             )
 
             # Load embedding model from config
             try:
                 from src.services.config import get_config
+
                 config = get_config()
                 model_name = config.embedding.model_name
             except ImportError:
@@ -75,18 +90,20 @@ class HybridRetriever:
             if torch.cuda.is_available():
                 self.embedding_model = self.embedding_model.cuda()
             elif torch.backends.mps.is_available():
-                self.embedding_model = self.embedding_model.to('mps')
+                self.embedding_model = self.embedding_model.to("mps")
 
             # Get collection
             self.collection = self.client.get_collection(name=self.collection_name)
 
-            logger.info(f"Retriever initialized with collection '{self.collection_name}' and model {model_name}")
+            logger.info(
+                f"Retriever initialized with collection '{self.collection_name}' and model {model_name}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to initialize retriever: {e}")
             raise
 
-    def keyword_prefilter(self, query: str) -> List[str]:
+    def keyword_prefilter(self, query: str) -> list[str]:
         """
         Perform keyword-based prefiltering to identify relevant chunks.
 
@@ -98,29 +115,29 @@ class HybridRetriever:
         """
         try:
             # Get all documents from collection
-            results = self.collection.get(include=['documents', 'metadatas'])
+            results = self.collection.get(include=["documents", "metadatas"])
 
-            if not results['documents']:
+            if not results["documents"]:
                 return []
 
             relevant_ids = []
 
             # Check each document for keyword matches
-            for doc_id, document, metadata in zip(
-                results['ids'],
-                results['documents'],
-                results['metadatas']
+            for doc_id, document, _metadatas in zip(
+                results["ids"], results["documents"], results["metadatas"], strict=False
             ):
                 # Check if document contains any prefilter keywords
                 doc_lower = document.lower()
 
                 # Check query terms
-                query_terms = set(re.findall(r'\b\w+\b', query.lower()))
+                query_terms = set(re.findall(r"\b\w+\b", query.lower()))
                 keyword_matches = query_terms.intersection(set(self.prefilter_keywords))
 
                 # Check if document contains query terms or prefilter keywords
                 has_query_terms = any(term in doc_lower for term in query_terms)
-                has_prefilter_keywords = any(keyword in doc_lower for keyword in self.prefilter_keywords)
+                has_prefilter_keywords = any(
+                    keyword in doc_lower for keyword in self.prefilter_keywords
+                )
 
                 if has_query_terms or has_prefilter_keywords or keyword_matches:
                     relevant_ids.append(doc_id)
@@ -132,17 +149,19 @@ class HybridRetriever:
             logger.error(f"Keyword prefiltering failed: {e}")
             return []
 
-    def generate_query_embedding(self, query: str) -> List[float]:
+    def generate_query_embedding(self, query: str) -> list[float]:
         """Generate embedding for query using Qwen model."""
         try:
             # Tokenize the query
-            inputs = self.tokenizer(query, return_tensors='pt', padding=True, truncation=True, max_length=512)
+            inputs = self.tokenizer(
+                query, return_tensors="pt", padding=True, truncation=True, max_length=512
+            )
 
             # Move inputs to same device as model
             if torch.cuda.is_available():
                 inputs = {k: v.cuda() for k, v in inputs.items()}
             elif torch.backends.mps.is_available():
-                inputs = {k: v.to('mps') for k, v in inputs.items()}
+                inputs = {k: v.to("mps") for k, v in inputs.items()}
 
             # Generate embedding
             with torch.no_grad():
@@ -156,7 +175,9 @@ class HybridRetriever:
             logger.error(f"Failed to generate query embedding: {e}")
             raise
 
-    def semantic_search(self, query: str, candidate_ids: Optional[List[str]] = None, top_k: int = 10) -> List[Dict[str, Any]]:
+    def semantic_search(
+        self, query: str, candidate_ids: list[str] | None = None, top_k: int = 10
+    ) -> list[dict[str, Any]]:
         """
         Perform semantic search using vector similarity.
 
@@ -177,12 +198,12 @@ class HybridRetriever:
             results = self.collection.query(
                 query_embeddings=[query_embedding],
                 n_results=top_k,
-                include=['documents', 'metadatas', 'distances']
+                include=["documents", "metadatas", "distances"],
             )
 
             # Normalize result structure to lists-of-lists (Chroma may return flat lists)
             if isinstance(results, dict):
-                for key in ['ids', 'documents', 'metadatas', 'distances']:
+                for key in ["ids", "documents", "metadatas", "distances"]:
                     if key in results and isinstance(results[key], list) and results[key]:
                         if not isinstance(results[key][0], list):
                             results[key] = [results[key]]
@@ -190,40 +211,46 @@ class HybridRetriever:
             # If we have candidate IDs, filter the results
             if candidate_ids:
                 filtered_indices = []
-                ids0 = results.get('ids', [])
+                ids0 = results.get("ids", [])
                 ids0 = ids0[0] if isinstance(ids0, list) and ids0 else []
                 for i, doc_id in enumerate(ids0):
                     if doc_id in candidate_ids:
                         filtered_indices.append(i)
                 if filtered_indices:
-                    for key in ['ids', 'documents', 'metadatas', 'distances']:
+                    for key in ["ids", "documents", "metadatas", "distances"]:
                         val = results.get(key)
                         if isinstance(val, list) and val:
                             seq = val[0]
                             if isinstance(seq, list):
-                                results[key][0] = [seq[i] for i in filtered_indices][:min(len(filtered_indices), top_k)]
+                                results[key][0] = [seq[i] for i in filtered_indices][
+                                    : min(len(filtered_indices), top_k)
+                                ]
                 else:
                     # No overlap with candidate_ids; fall back to empty filtered result lists
-                    for key in ['ids', 'documents', 'metadatas', 'distances']:
+                    for key in ["ids", "documents", "metadatas", "distances"]:
                         val = results.get(key)
                         if isinstance(val, list) and val:
                             results[key][0] = []
 
             # Format results
             formatted_results = []
-            for i, (doc_id, document, metadata, distance) in enumerate(zip(
-                results['ids'][0] if results['ids'] else [],
-                results['documents'][0] if results['documents'] else [],
-                results['metadatas'][0] if results['metadatas'] else [],
-                results['distances'][0] if results['distances'] else []
-            )):
-                formatted_results.append({
-                    'id': doc_id,
-                    'text': document,
-                    'metadata': metadata,
-                    'score': 1 - distance,  # Convert distance to similarity score
-                    'rank': i + 1
-                })
+            for i, (doc_id, document, metadata, distance) in enumerate(
+                zip(
+                    results["ids"][0] if results["ids"] else [],
+                    results["documents"][0] if results["documents"] else [],
+                    results["metadatas"][0] if results["metadatas"] else [],
+                    results["distances"][0] if results["distances"] else [], strict=False,
+                )
+            ):
+                formatted_results.append(
+                    {
+                        "id": doc_id,
+                        "text": document,
+                        "metadata": metadata,
+                        "score": 1 - distance,  # Convert distance to similarity score
+                        "rank": i + 1,
+                    }
+                )
 
             logger.info(f"Semantic search found {len(formatted_results)} results")
             return formatted_results
@@ -232,7 +259,7 @@ class HybridRetriever:
             logger.error(f"Semantic search failed: {e}")
             return []
 
-    def retrieve(self, query: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
+    def retrieve(self, query: str, top_k: int | None = None) -> list[dict[str, Any]]:
         """
         Perform hybrid retrieval combining keyword prefiltering and semantic search.
 
@@ -247,11 +274,13 @@ class HybridRetriever:
             k = top_k or self.top_k
 
             # Step 1: Keyword-based prefiltering (optional)
-            candidate_ids: Optional[List[str]]
+            candidate_ids: list[str] | None
             if self.prefilter_keywords:
                 candidate_ids = self.keyword_prefilter(query)
                 if not candidate_ids:
-                    logger.info("No candidates from keyword prefiltering; falling back to pure semantic search")
+                    logger.info(
+                        "No candidates from keyword prefiltering; falling back to pure semantic search"
+                    )
                     candidate_ids = None
             else:
                 candidate_ids = None
@@ -260,7 +289,7 @@ class HybridRetriever:
             results = self.semantic_search(query, candidate_ids=candidate_ids, top_k=k)
 
             # Sort by score (highest first)
-            results.sort(key=lambda x: x['score'], reverse=True)
+            results.sort(key=lambda x: x["score"], reverse=True)
 
             logger.info(f"Hybrid retrieval completed: {len(results)} results for query '{query}'")
             return results
@@ -272,9 +301,9 @@ class HybridRetriever:
     def retrieve_with_metadata_filter(
         self,
         query: str,
-        metadata_filters: Optional[Dict[str, Any]] = None,
-        top_k: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        metadata_filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Retrieve with additional metadata filters.
 
@@ -296,7 +325,7 @@ class HybridRetriever:
             # Apply metadata filters
             filtered_results = []
             for result in results:
-                metadata = result.get('metadata', {})
+                metadata = result.get("metadata", {})
                 match = True
 
                 for key, value in metadata_filters.items():
@@ -314,14 +343,14 @@ class HybridRetriever:
             logger.error(f"Metadata filtering failed: {e}")
             return []
 
-    def get_collection_stats(self) -> Dict[str, Any]:
+    def get_collection_stats(self) -> dict[str, Any]:
         """Get statistics about the collection."""
         try:
             count = self.collection.count()
             return {
                 "collection_name": self.collection_name,
                 "total_chunks": count,
-                "prefilter_keywords": self.prefilter_keywords
+                "prefilter_keywords": self.prefilter_keywords,
             }
         except Exception as e:
             logger.error(f"Failed to get collection stats: {e}")
@@ -332,7 +361,7 @@ def create_retriever(
     vectorstore_dir: str = ".vectorstore",
     collection_name: str = "email_chunks",
     top_k: int = 10,
-    prefilter_keywords: Optional[List[str]] = None
+    prefilter_keywords: list[str] | None = None,
 ) -> HybridRetriever:
     """
     Factory function to create and initialize a HybridRetriever.
@@ -350,7 +379,7 @@ def create_retriever(
         collection_name=collection_name,
         persist_directory=vectorstore_dir,
         top_k=top_k,
-        prefilter_keywords=prefilter_keywords
+        prefilter_keywords=prefilter_keywords,
     )
     retriever.initialize()
     return retriever
@@ -365,7 +394,7 @@ def test_retrieval():
         test_queries = [
             "What are the main risks in the project?",
             "Are there any blockers or urgent issues?",
-            "What is the status of the login page specification?"
+            "What is the status of the login page specification?",
         ]
 
         for query in test_queries:
@@ -385,8 +414,7 @@ def test_retrieval():
 if __name__ == "__main__":
     # Setup logging
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
     test_retrieval()

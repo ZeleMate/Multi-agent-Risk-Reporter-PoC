@@ -3,14 +3,19 @@ Analyzer Agent Prompts
 Risk classification and evidence extraction prompts.
 """
 
-from typing import List, Dict, Any
+from typing import Any
+
 from src.services.config import get_config
+
 
 def _escape_braces(text: str) -> str:
     # Escape braces for LangChain templates - convert single braces to double braces
     return text.replace("{", "{{").replace("}", "}}")
 
-def get_analyzer_prompt(chunks: List[Dict[str, Any]], project_context: str = "", config=None) -> str:
+
+def get_analyzer_prompt(
+    chunks: list[dict[str, Any]], project_context: str = "", config=None
+) -> str:
     """
     Generate analyzer prompt for risk classification - PORTFOLIO HEALTH FOCUS.
 
@@ -30,7 +35,7 @@ def get_analyzer_prompt(chunks: List[Dict[str, Any]], project_context: str = "",
     # Format evidence chunks with enhanced metadata
     evidence_text = ""
     for i, chunk in enumerate(chunks, 1):
-        metadata = chunk.get('metadata', {})
+        metadata = chunk.get("metadata", {})
         evidence_text += f"""
 EVIDENCE {i}:
 File: {_escape_braces(metadata.get('file', 'Unknown'))}
@@ -159,13 +164,24 @@ Always return 1–3 items. If strong evidence is unavailable, output the best ca
 Analyze the evidence with surgical precision and return only the highest-impact risks that demand executive attention."""
 
     # Substitute config variables
-    prompt = prompt.replace("{{config['uhpai']['aging_days']}}", str(config.flags.uhpai['aging_days']))
-    prompt = prompt.replace("{{config['erb']['critical_terms']}}", str(config.flags.erb['critical_terms']))
-    prompt = prompt.replace("{{config['uhpai']['role_weights']}}", str(config.flags.uhpai['role_weights']))
-    prompt = prompt.replace("{{config['scoring']['topic_weight']}}", str(config.scoring.topic_weight))
-    prompt = prompt.replace("{{config['scoring']['repeat_weight']}}", str(config.scoring.repeat_weight))
+    prompt = prompt.replace(
+        "{{config['uhpai']['aging_days']}}", str(config.flags.uhpai["aging_days"])
+    )
+    prompt = prompt.replace(
+        "{{config['erb']['critical_terms']}}", str(config.flags.erb["critical_terms"])
+    )
+    prompt = prompt.replace(
+        "{{config['uhpai']['role_weights']}}", str(config.flags.uhpai["role_weights"])
+    )
+    prompt = prompt.replace(
+        "{{config['scoring']['topic_weight']}}", str(config.scoring.topic_weight)
+    )
+    prompt = prompt.replace(
+        "{{config['scoring']['repeat_weight']}}", str(config.scoring.repeat_weight)
+    )
 
     return prompt
+
 
 def get_analyzer_system_prompt() -> str:
     """Get the system prompt for analyzer agent."""

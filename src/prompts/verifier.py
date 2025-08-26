@@ -3,13 +3,16 @@ Verifier Agent Prompts
 Evidence validation and confidence assessment prompts.
 """
 
-from typing import List, Dict, Any
+from typing import Any
+
 from ..types import FlagItem
+
 
 def _escape_braces(text: str) -> str:
     return text.replace("{", "{{").replace("}", "}}")
 
-def get_verifier_prompt(candidates: List[FlagItem], full_evidence: List[Dict[str, Any]]) -> str:
+
+def get_verifier_prompt(candidates: list[FlagItem], full_evidence: list[dict[str, Any]]) -> str:
     """
     Generate verifier prompt for evidence validation - PORTFOLIO HEALTH FOCUS.
 
@@ -34,7 +37,7 @@ Score: {candidate.get('score', 0)}
 Confidence: {_escape_braces(candidate.get('confidence', 'Unknown'))}
 Thread ID: {_escape_braces(candidate.get('thread_id', 'Unknown'))}
 Evidence Citations: {len(candidate.get('evidence', []))} references
- 
+
 
 EVIDENCE CITATIONS:
 {candidate.get('evidence', [])}
@@ -45,7 +48,7 @@ EVIDENCE CITATIONS:
     # Format full evidence with comprehensive detail (list input)
     evidence_text = ""
     for idx, chunk in enumerate(full_evidence, 1):
-        metadata = chunk.get('metadata', {})
+        metadata = chunk.get("metadata", {})
         evidence_text += f"""
 EVIDENCE CHUNK {idx}:
 File: {_escape_braces(metadata.get('file', 'Unknown'))}
@@ -193,7 +196,7 @@ Execute validation with rigor and return evidence-backed risks that demand execu
 
     return _escape_braces(prompt)
 
+
 def get_verifier_system_prompt() -> str:
     """Get the system prompt for verifier agent."""
     return """You trust but verify: prefer downgrading confidence (high→mid→low) over rejecting plausible items. Reject only when evidence contradicts the claim or shows resolution. Provide precise, concise validation notes and keep useful candidates whenever evidence supports them at least partially."""
-

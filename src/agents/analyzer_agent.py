@@ -1,13 +1,14 @@
+import json
+import os
+from typing import Any
+
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+
 from src.agents.state import OverallState
 from src.prompts.analyzer import get_analyzer_prompt, get_analyzer_system_prompt
 from src.services.config import get_config
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
-import json
-from typing import List, Dict, Any
-import os
 from src.types import AnalyzerResponse
- 
 
 
 def analyzer_agent(state: OverallState) -> AnalyzerResponse:
@@ -31,15 +32,23 @@ def analyzer_agent(state: OverallState) -> AnalyzerResponse:
         try:
             os.makedirs(report_dir, exist_ok=True)
             with open(os.path.join(report_dir, "chunks_debug.json"), "w", encoding="utf-8") as f:
-                json.dump({
-                    "total_chunks": len(base_chunks) if isinstance(base_chunks, list) else 0,
-                    "sample_ids": [ch.get("id") for ch in (base_chunks[:5] if isinstance(base_chunks, list) else [])]
-                }, f, ensure_ascii=False, indent=2)
+                json.dump(
+                    {
+                        "total_chunks": len(base_chunks) if isinstance(base_chunks, list) else 0,
+                        "sample_ids": [
+                            ch.get("id")
+                            for ch in (base_chunks[:5] if isinstance(base_chunks, list) else [])
+                        ],
+                    },
+                    f,
+                    ensure_ascii=False,
+                    indent=2,
+                )
         except Exception:
             pass
     chunk_windows = [base_chunks] if isinstance(base_chunks, list) and base_chunks else []
 
-    aggregated: List[Dict[str, Any]] = []
+    aggregated: list[dict[str, Any]] = []
 
     for idx, win in enumerate(chunk_windows):
         prompt_text = get_analyzer_prompt(win, state["project_context"], config)
@@ -52,6 +61,7 @@ def analyzer_agent(state: OverallState) -> AnalyzerResponse:
         # Parse YAML (no code fences expected)
         try:
             import yaml
+
             response = yaml.safe_load(response_text)
         except Exception:
             response = response_text
@@ -60,15 +70,24 @@ def analyzer_agent(state: OverallState) -> AnalyzerResponse:
         if getattr(config, "debug_logs", False):
             try:
                 import pathlib
+
                 pathlib.Path(report_dir).mkdir(parents=True, exist_ok=True)
-                with open(os.path.join(report_dir, f"analyzer_window_{idx}.json"), "w", encoding="utf-8") as f:
-                    f.write(response_text if isinstance(response_text, str) else json.dumps(response, ensure_ascii=False, indent=2))
-                with open(os.path.join(report_dir, f"analyzer_prompt_{idx}.txt"), "w", encoding="utf-8") as f:
+                with open(
+                    os.path.join(report_dir, f"analyzer_window_{idx}.json"), "w", encoding="utf-8"
+                ) as f:
+                    f.write(
+                        response_text
+                        if isinstance(response_text, str)
+                        else json.dumps(response, ensure_ascii=False, indent=2)
+                    )
+                with open(
+                    os.path.join(report_dir, f"analyzer_prompt_{idx}.txt"), "w", encoding="utf-8"
+                ) as f:
                     f.write(prompt_text)
             except Exception:
                 pass
 
-        items: List[Dict[str, Any]] = []
+        items: list[dict[str, Any]] = []
         if isinstance(response, dict) and "items" in response:
             items = response["items"] or []
         elif isinstance(response, list):
@@ -79,7 +98,10 @@ def analyzer_agent(state: OverallState) -> AnalyzerResponse:
         # basic dedup by (thread_id, title)
         for it in items:
             key = (it.get("thread_id"), (it.get("title") or "").strip().lower())
-            if not any((x.get("thread_id"), (x.get("title") or "").strip().lower()) == key for x in aggregated):
+            if not any(
+                (x.get("thread_id"), (x.get("title") or "").strip().lower()) == key
+                for x in aggregated
+            ):
                 aggregated.append(it)
 
     candidates = aggregated
@@ -89,7 +111,9 @@ def analyzer_agent(state: OverallState) -> AnalyzerResponse:
         try:
             os.makedirs(report_dir, exist_ok=True)
             with open(os.path.join(report_dir, "candidates.json"), "w", encoding="utf-8") as f:
-                json.dump({"count": len(candidates), "items": candidates}, f, ensure_ascii=False, indent=2)
+                json.dump(
+                    {"count": len(candidates), "items": candidates}, f, ensure_ascii=False, indent=2
+                )
         except Exception:
             pass
 

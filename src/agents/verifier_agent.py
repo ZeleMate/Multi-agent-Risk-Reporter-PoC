@@ -1,9 +1,11 @@
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+
 from src.agents.state import OverallState
 from src.prompts.verifier import get_verifier_prompt, get_verifier_system_prompt
 from src.services.config import get_config
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
 from src.types import VerifierResponse
+
 
 def verifier_agent(state: OverallState) -> VerifierResponse:
     """Verifier agent."""
@@ -31,6 +33,7 @@ def verifier_agent(state: OverallState) -> VerifierResponse:
     # Parse YAML
     try:
         import yaml
+
         data = yaml.safe_load(response_text)
     except Exception:
         data = response_text
@@ -44,14 +47,17 @@ def verifier_agent(state: OverallState) -> VerifierResponse:
     else:
         verified = []
 
-
     # Debug: save only when enabled
     if getattr(config, "debug_logs", False):
         try:
-            import os, json
+            import json
+            import os
+
             os.makedirs(report_dir, exist_ok=True)
             with open(os.path.join(report_dir, "verified.json"), "w", encoding="utf-8") as f:
-                json.dump({"count": len(verified), "items": verified}, f, ensure_ascii=False, indent=2)
+                json.dump(
+                    {"count": len(verified), "items": verified}, f, ensure_ascii=False, indent=2
+                )
         except Exception:
             pass
 

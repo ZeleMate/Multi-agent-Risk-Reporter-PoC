@@ -1,22 +1,24 @@
-import re
-import os
-import logging
-import json
-import hashlib
-from typing import List, Dict, Any, Optional
 import argparse
+import hashlib
+import json
+import logging
+import os
+import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from email.utils import parsedate_to_datetime
-from src.ingestion.pii import PIIRedactor
+from typing import Any
+
 from src.ingestion.chunker import create_chunks
+from src.ingestion.pii import PIIRedactor
 from src.services.config import get_config
 
 logger = logging.getLogger(__name__)
 
 # Note: logging configuration is handled by the CLI entrypoint; avoid setting it at import time here.
 
-def normalize_date(date_str: str) -> Dict[str, Any]:
+
+def normalize_date(date_str: str) -> dict[str, Any]:
     """
     Normalize date string and return epoch timestamp.
 
@@ -31,83 +33,77 @@ def normalize_date(date_str: str) -> Dict[str, Any]:
         dt = parsedate_to_datetime(date_str)
         iso_date = dt.isoformat()
         epoch_timestamp = int(dt.timestamp())
-        return {
-            'normalized_date': iso_date,
-            'epoch_timestamp': epoch_timestamp
-        }
+        return {"normalized_date": iso_date, "epoch_timestamp": epoch_timestamp}
     except Exception:
         # Fallback: accept common ISO-like patterns only, else return original
         try:
-            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M', '%Y.%m.%d %H:%M'):
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M", "%Y.%m.%d %H:%M"):
                 try:
                     dt = datetime.strptime(date_str.strip(), fmt)
                     return {
-                        'normalized_date': dt.isoformat(),
-                        'epoch_timestamp': int(dt.timestamp())
+                        "normalized_date": dt.isoformat(),
+                        "epoch_timestamp": int(dt.timestamp()),
                     }
                 except Exception:
                     continue
         except Exception:
             pass
-        return {
-            'normalized_date': date_str,
-            'epoch_timestamp': None
-        }
+        return {"normalized_date": date_str, "epoch_timestamp": None}
 
-def parse_colleagues(colleagues_path: str) -> Dict[str, Dict[str, str]]:
+
+def parse_colleagues(colleagues_path: str) -> dict[str, dict[str, str]]:
     """
     Parse the colleagues.txt file and return a dictionary mapping email addresses to roles and names.
     """
     colleagues = {}
     try:
-        with open(colleagues_path, 'r', encoding='utf-8') as file:
+        with open(colleagues_path, encoding="utf-8") as file:
             lines = file.readlines()
-        
+
         for line in lines:
             line = line.strip()
-            if line.startswith('Characters:') or not line:
+            if line.startswith("Characters:") or not line:
                 continue
-            
+
             # Parse lines like: "Project Manager (PM): Peter Kovacs (kovacs.peter@kisjozsitech.hu)"
-            match = re.match(r'(.+?):\s*(.+?)\s*\((.+?)\)', line)
+            match = re.match(r"(.+?):\s*(.+?)\s*\((.+?)\)", line)
             if match:
                 role = match.group(1).strip()
                 name = match.group(2).strip()
                 email = match.group(3).strip()
-                
-                colleagues[email] = {
-                    'name': name,
-                    'role': role,
-                    'email': email
-                }
-        
+
+                colleagues[email] = {"name": name, "role": role, "email": email}
+
         return colleagues
-    
+
     except Exception as e:
         logger.error(f"Error parsing colleagues file {colleagues_path}: {e}")
         return {}
 
-def parse_email_thread(email_path: str, colleagues: Dict[str, Dict[str, str]], redactor: PIIRedactor) -> Dict[str, Any]:
+
+def parse_email_thread(
+    email_path: str, colleagues: dict[str, dict[str, str]], redactor: PIIRedactor
+) -> dict[str, Any]:
     """
     Parse an email thread file and return structured data.
     """
     try:
-        with open(email_path, 'r', encoding='utf-8') as file:
+        with open(email_path, encoding="utf-8") as file:
             content = file.read()
-        
+
         # Split content into individual emails using robust header detection
         # Find all "From:" at line beginnings
         email_matches = []
-        lines = content.split('\n')
+        lines = content.split("\n")
         current_email = []
         in_email = False
 
         for line in lines:
             # Check if this line starts a new email
-            if line.startswith('From:'):
+            if line.startswith("From:"):
                 # Save previous email if exists
                 if current_email:
-                    email_matches.append('\n'.join(current_email))
+                    email_matches.append("\n".join(current_email))
                     current_email = []
 
                 # Start new email
@@ -119,67 +115,72 @@ def parse_email_thread(email_path: str, colleagues: Dict[str, Dict[str, str]], r
 
         # Add the last email if exists
         if current_email:
-            email_matches.append('\n'.join(current_email))
-        
+            email_matches.append("\n".join(current_email))
+
         emails = []
-        for i, email_content in enumerate(email_matches):
+        for email_content in email_matches:
             email_content = email_content.strip()
             if not email_content:
                 continue
-                
+
             # Parse individual email
             email_data = parse_single_email(email_content, colleagues, redactor)
             if email_data:
                 emails.append(email_data)
-        
+
         # Create thread summary with stable hash-based thread_id
         if emails:
             # Create stable thread identifier using hash of key components + file path to avoid collisions
-            canonical_subject = emails[0].get('canonical_subject', '')
-            participants = list(set([email['sender_email'] for email in emails]))
-            participants_str = '_'.join(sorted(participants))
+            canonical_subject = emails[0].get("canonical_subject", "")
+            participants = list({email["sender_email"] for email in emails})
+            participants_str = "_".join(sorted(participants))
 
             file_abs_path = os.path.abspath(email_path)
 
             content_hash = hashlib.sha1(
-                f"{canonical_subject}_{participants_str}_{len(emails)}_{file_abs_path}".encode('utf-8')
+                f"{canonical_subject}_{participants_str}_{len(emails)}_{file_abs_path}".encode()
             ).hexdigest()[:12]
 
             thread_id = f"thread_{content_hash}"
         else:
-            thread_id = os.path.basename(email_path).replace('.txt', '')
-        
+            thread_id = os.path.basename(email_path).replace(".txt", "")
+
         # Participants based on sender_person_id (already redacted in emails)
         participants_redacted = []
         for em in emails:
-            person_id = em.get('sender_person_id')
+            person_id = em.get("sender_person_id")
             if person_id and person_id not in participants_redacted:
                 participants_redacted.append(person_id)
                 continue
             # Fallback: use sender_name if not a placeholder
-            sender_name = em.get('sender_name')
-            if sender_name and sender_name not in ('[NAME]', '[PERSON]') and sender_name not in participants_redacted:
+            sender_name = em.get("sender_name")
+            if (
+                sender_name
+                and sender_name not in ("[NAME]", "[PERSON]")
+                and sender_name not in participants_redacted
+            ):
                 participants_redacted.append(sender_name)
         if not participants_redacted:
-            participants_redacted = ['[PERSON]']
+            participants_redacted = ["[PERSON]"]
 
         thread_data = {
-            'thread_id': thread_id,
-            'file_path': email_path,
-            'total_emails': len(emails),
-            'participants': participants_redacted,
-            'subject': emails[0]['subject'] if emails else '',
-            'canonical_subject': emails[0].get('canonical_subject', '') if emails else '',
-            'start_date': emails[0]['date'] if emails else '',
-            'end_date': emails[-1]['date'] if emails else '',
-            'emails': emails
+            "thread_id": thread_id,
+            "file_path": email_path,
+            "total_emails": len(emails),
+            "participants": participants_redacted,
+            "subject": emails[0]["subject"] if emails else "",
+            "canonical_subject": emails[0].get("canonical_subject", "") if emails else "",
+            "start_date": emails[0]["date"] if emails else "",
+            "end_date": emails[-1]["date"] if emails else "",
+            "emails": emails,
         }
-        
+
         return thread_data
-    
+
     except Exception as e:
         logger.error(f"Error parsing email thread {email_path}: {e}")
         return {}
+
 
 def _remove_quoted_replies(text: str) -> str:
     """
@@ -188,7 +189,7 @@ def _remove_quoted_replies(text: str) -> str:
     if not text:
         return text
 
-    lines = text.split('\n')
+    lines = text.split("\n")
     clean_lines = []
     in_quote = False
 
@@ -197,13 +198,13 @@ def _remove_quoted_replies(text: str) -> str:
 
         # Detect quote markers
         quote_markers = [
-            stripped.startswith('>'),  # Email quote
-            stripped.startswith('|'),  # Some email clients
-            stripped.startswith('On ') and 'wrote:' in stripped,  # "On [date] [person] wrote:"
-            stripped.startswith('From:') and len(lines) > 1,  # Forwarded message header
-            stripped.startswith('---') and 'Forwarded' in stripped,  # Forward marker
-            stripped.startswith('Begin forwarded message:'),  # Forward marker
-            re.match(r'^\d{4}[/-]\d{2}[/-]\d{2} \d{2}:\d{2}', stripped),  # Date at start
+            stripped.startswith(">"),  # Email quote
+            stripped.startswith("|"),  # Some email clients
+            stripped.startswith("On ") and "wrote:" in stripped,  # "On [date] [person] wrote:"
+            stripped.startswith("From:") and len(lines) > 1,  # Forwarded message header
+            stripped.startswith("---") and "Forwarded" in stripped,  # Forward marker
+            stripped.startswith("Begin forwarded message:"),  # Forward marker
+            re.match(r"^\d{4}[/-]\d{2}[/-]\d{2} \d{2}:\d{2}", stripped),  # Date at start
         ]
 
         if any(quote_markers):
@@ -221,148 +222,158 @@ def _remove_quoted_replies(text: str) -> str:
 
         clean_lines.append(line)
 
-    return '\n'.join(clean_lines).strip()
+    return "\n".join(clean_lines).strip()
 
-def parse_single_email(email_content: str, colleagues: Dict[str, Dict[str, str]], redactor: PIIRedactor) -> Optional[Dict[str, Any]]:
+
+def parse_single_email(
+    email_content: str, colleagues: dict[str, dict[str, str]], redactor: PIIRedactor
+) -> dict[str, Any] | None:
     """
     Parse a single email from the thread content.
     """
     try:
         # Extract From field - handle multiple formats and Unicode emails:
         # "Name email@domain.com", "Name <email@domain.com>", "Name (email@domain.com)"
-        from_line = email_content.split('\n')[0]
+        from_line = email_content.split("\n")[0]
         # Allow Unicode in local-part; keep ASCII domain/TLD
-        email_re = r'[^<>\s()]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}'
+        email_re = r"[^<>\s()]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"
         # Try angle brackets first
-        from_match = re.search(rf'From:\s*(.+?)\s*<({email_re})>', from_line)
+        from_match = re.search(rf"From:\s*(.+?)\s*<({email_re})>", from_line)
         if not from_match:
             # Try parentheses form
-            from_match = re.search(rf'From:\s*(.+?)\s*\(({email_re})\)', from_line)
+            from_match = re.search(rf"From:\s*(.+?)\s*\(({email_re})\)", from_line)
             if not from_match:
                 # Try whitespace-separated name + email
-                from_match = re.search(rf'From:\s*(.+?)\s+({email_re})', from_line)
+                from_match = re.search(rf"From:\s*(.+?)\s+({email_re})", from_line)
                 if not from_match:
                     logger.warning(f"Could not parse From line: {from_line}")
                     return None
-        
+
         sender_info = from_match.group(1).strip()
         sender_email = from_match.group(2).strip()
-        
+
         # Extract To field
-        to_match = re.search(r'To:\s*(.+?)(?:\n|$)', email_content, re.MULTILINE)
+        to_match = re.search(r"To:\s*(.+?)(?:\n|$)", email_content, re.MULTILINE)
         to_recipients = []
         if to_match:
             to_content = to_match.group(1).strip()
             to_recipients = parse_recipients(to_content)
-        
+
         # Extract Cc field (optional)
-        cc_match = re.search(r'Cc:\s*(.+?)(?:\n|$)', email_content, re.MULTILINE)
+        cc_match = re.search(r"Cc:\s*(.+?)(?:\n|$)", email_content, re.MULTILINE)
         cc_recipients = []
         if cc_match:
             cc_content = cc_match.group(1).strip()
             cc_recipients = parse_recipients(cc_content)
-        
+
         # Extract Date field and normalize
-        date_match = re.search(r'Date:\s*(.+?)(?:\n|$)', email_content, re.MULTILINE)
-        date_str = date_match.group(1).strip() if date_match else ''
-        date_normalized = normalize_date(date_str) if date_str else {'normalized_date': '', 'epoch_timestamp': None}
-        
+        date_match = re.search(r"Date:\s*(.+?)(?:\n|$)", email_content, re.MULTILINE)
+        date_str = date_match.group(1).strip() if date_match else ""
+        date_normalized = (
+            normalize_date(date_str)
+            if date_str
+            else {"normalized_date": "", "epoch_timestamp": None}
+        )
+
         # Extract Subject field
-        subject_match = re.search(r'Subject:\s*(.+?)(?:\n|$)', email_content, re.MULTILINE)
-        subject = subject_match.group(1).strip() if subject_match else ''
-        
+        subject_match = re.search(r"Subject:\s*(.+?)(?:\n|$)", email_content, re.MULTILINE)
+        subject = subject_match.group(1).strip() if subject_match else ""
+
         # Extract body (everything after the headers)
         # Find the first empty line after headers
-        lines = email_content.split('\n')
+        lines = email_content.split("\n")
         body_start = 0
         for i, line in enumerate(lines):
-            if line.strip() == '' and i > 0:
+            if line.strip() == "" and i > 0:
                 body_start = i + 1
                 break
 
         body_lines = lines[body_start:]
-        body = '\n'.join(body_lines).strip()
+        body = "\n".join(body_lines).strip()
 
         # Apply quoted reply detection and removal
         body = _remove_quoted_replies(body)
-        
+
         # Get sender info from colleagues
-        sender_role = colleagues.get(sender_email, {}).get('role', 'Unknown')
-        sender_name = colleagues.get(sender_email, {}).get('name', sender_info.split()[0] if sender_info else 'Unknown')
-        
+        sender_role = colleagues.get(sender_email, {}).get("role", "Unknown")
+        sender_name = colleagues.get(sender_email, {}).get(
+            "name", sender_info.split()[0] if sender_info else "Unknown"
+        )
+
         # Create canonical subject (strip RE:, FW:, etc.)
-        canonical_subject = re.sub(r'^(RE:|FW:|FWD:)\s*', '', subject, flags=re.IGNORECASE).strip().lower()
-        
+        canonical_subject = (
+            re.sub(r"^(RE:|FW:|FWD:)\s*", "", subject, flags=re.IGNORECASE).strip().lower()
+        )
+
         email_data = {
-            'sender_name': sender_name,
-            'sender_email': sender_email,
-            'sender_role': sender_role,
-            'to_recipients': to_recipients,
-            'cc_recipients': cc_recipients,
-            'date': date_str,
-            'date_normalized': date_normalized['normalized_date'],
-            'subject': subject,
-            'canonical_subject': canonical_subject,
-            'body': body,
-            
+            "sender_name": sender_name,
+            "sender_email": sender_email,
+            "sender_role": sender_role,
+            "to_recipients": to_recipients,
+            "cc_recipients": cc_recipients,
+            "date": date_str,
+            "date_normalized": date_normalized["normalized_date"],
+            "subject": subject,
+            "canonical_subject": canonical_subject,
+            "body": body,
         }
-        
+
         # Apply PII redaction
         return redactor.redact_email_data(email_data)
-    
+
     except Exception as e:
         logger.error(f"Error parsing single email: {e}")
         return None
 
-def parse_recipients(recipients_str: str) -> List[Dict[str, str]]:
+
+def parse_recipients(recipients_str: str) -> list[dict[str, str]]:
     """
     Parse recipients string and return list of recipient dictionaries.
     """
     recipients = []
     if not recipients_str:
         return recipients
-    
+
     # Split by comma and process each recipient
-    for recipient in recipients_str.split(','):
+    for recipient in recipients_str.split(","):
         recipient = recipient.strip()
         if not recipient:
             continue
-        
+
         # Try to extract email and name (allow Unicode in local-part)
-        email_match = re.search(r'([^<>\s()]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})', recipient)
+        email_match = re.search(r"([^<>\s()]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})", recipient)
         if email_match:
             email = email_match.group(1)
-            # Remove email from recipient string to get name
-            name = recipient.replace(email, '').strip()
-            if name.startswith('<') and name.endswith('>'):
+            # Remove email and surrounding brackets from recipient string to get name
+            name = recipient.replace(f"<{email}>", "").replace(email, "").strip()
+            # Clean up any remaining angle brackets
+            if name.startswith("<") and name.endswith(">"):
                 name = name[1:-1].strip()
-            
-            recipients.append({
-                'name': name if name else 'Unknown',
-                'email': email
-            })
-    
+
+            recipients.append({"name": name if name else "Unknown", "email": email})
+
     return recipients
 
-def process_email_data(input_dir: str, output_dir: str, workers: Optional[int] = None) -> None:
+
+def process_email_data(input_dir: str, output_dir: str, workers: int | None = None) -> None:
     """
     Process all email threads and colleagues data, then save structured output.
     """
     try:
         # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
-        
+
         # Find the colleagues file
         colleagues_file = None
-        for root, dirs, files in os.walk(input_dir):
-            if 'Colleagues.txt' in files:
-                colleagues_file = os.path.join(root, 'Colleagues.txt')
+        for root, files in os.walk(input_dir):
+            if "Colleagues.txt" in files:
+                colleagues_file = os.path.join(root, "Colleagues.txt")
                 break
-        
+
         if not colleagues_file:
             logger.error("Colleagues.txt not found in input directory")
             return
-        
+
         # Parse colleagues
         colleagues = parse_colleagues(colleagues_file)
 
@@ -370,8 +381,8 @@ def process_email_data(input_dir: str, output_dir: str, workers: Optional[int] =
         person_id_mapping = {}
         for email, data in colleagues.items():
             # Create stable person_id from name + role
-            name_clean = data['name'].lower().replace(' ', '_')
-            role_clean = data['role'].lower().replace(' ', '_').replace('(', '').replace(')', '')
+            name_clean = data["name"].lower().replace(" ", "_")
+            role_clean = data["role"].lower().replace(" ", "_").replace("(", "").replace(")", "")
             person_id = f"{name_clean}_{role_clean}"
             person_id_mapping[email] = person_id
 
@@ -379,40 +390,40 @@ def process_email_data(input_dir: str, output_dir: str, workers: Optional[int] =
         known_people = {}
         for email, data in colleagues.items():
             known_people[email] = {
-                'person_id': person_id_mapping[email],
-                'name': data['name'],
-                'role': data['role']
+                "person_id": person_id_mapping[email],
+                "name": data["name"],
+                "role": data["role"],
             }
 
         # Save colleagues data for output (PII protected - no names)
         colleagues_clean = {}
         for email, data in colleagues.items():
             colleagues_clean[email] = {
-                'person_id': person_id_mapping[email],
-                'role': data['role'],
-                'email_redacted': '[EMAIL]'
+                "person_id": person_id_mapping[email],
+                "role": data["role"],
+                "email_redacted": "[EMAIL]",
             }
 
         # Initialize PII redactor with known people for name replacement
         redactor = PIIRedactor(known_people=known_people)
 
-        colleagues_output_path = os.path.join(output_dir, 'colleagues.json')
-        with open(colleagues_output_path, 'w', encoding='utf-8') as f:
+        colleagues_output_path = os.path.join(output_dir, "colleagues.json")
+        with open(colleagues_output_path, "w", encoding="utf-8") as f:
             json.dump(colleagues_clean, f, ensure_ascii=False, indent=2)
-        
+
         # Find all email thread files
         email_files = []
-        for root, dirs, files in os.walk(input_dir):
+        for root, files in os.walk(input_dir):
             for file in files:
-                if file.startswith('email') and file.endswith('.txt'):
+                if file.startswith("email") and file.endswith(".txt"):
                     email_files.append(os.path.join(root, file))
-        
+
         # Parse each email thread (parallel)
         all_threads = []
         sorted_files = sorted(email_files)
         max_workers = workers or max(4, (os.cpu_count() or 4))
 
-        def _parse_wrapper(path: str) -> Optional[Dict[str, Any]]:
+        def _parse_wrapper(path: str) -> dict[str, Any] | None:
             try:
                 return parse_email_thread(path, colleagues, redactor)
             except Exception as e:
@@ -423,57 +434,80 @@ def process_email_data(input_dir: str, output_dir: str, workers: Optional[int] =
             for result in executor.map(_parse_wrapper, sorted_files):
                 if result:
                     all_threads.append(result)
-        
+
         # Save all threads data
-        threads_output_path = os.path.join(output_dir, 'email_threads.json')
-        with open(threads_output_path, 'w', encoding='utf-8') as f:
+        threads_output_path = os.path.join(output_dir, "email_threads.json")
+        with open(threads_output_path, "w", encoding="utf-8") as f:
             json.dump(all_threads, f, ensure_ascii=False, indent=2)
-        
+
         # Load chunking parameters from config if available
         app_config = get_config()
-        chunk_size = getattr(app_config.chunking, 'chunk_size', 1000)
-        overlap = getattr(app_config.chunking, 'overlap', 100)
+        chunk_size = getattr(app_config.chunking, "chunk_size", 1000)
+        overlap = getattr(app_config.chunking, "overlap", 100)
 
         # Create chunks for vector store
         chunks = create_chunks(all_threads, chunk_size=chunk_size, overlap=overlap)
-        chunks_output_path = os.path.join(output_dir, 'chunks.json')
-        with open(chunks_output_path, 'w', encoding='utf-8') as f:
+        chunks_output_path = os.path.join(output_dir, "chunks.json")
+        with open(chunks_output_path, "w", encoding="utf-8") as f:
             json.dump(chunks, f, ensure_ascii=False, indent=2)
-        
+
         # Create summary statistics
         summary = {
-            'total_threads': len(all_threads),
-            'total_emails': sum(thread['total_emails'] for thread in all_threads),
-            'total_participants': len(colleagues),
-            'date_processed': datetime.now().isoformat(),
-            'threads': [{
-                'thread_id': thread['thread_id'],
-                'total_emails': thread['total_emails'],
-                'subject': thread['subject'],
-                'participants': thread['participants']
-            } for thread in all_threads]
+            "total_threads": len(all_threads),
+            "total_emails": sum(thread["total_emails"] for thread in all_threads),
+            "total_participants": len(colleagues),
+            "date_processed": datetime.now().isoformat(),
+            "threads": [
+                {
+                    "thread_id": thread["thread_id"],
+                    "total_emails": thread["total_emails"],
+                    "subject": thread["subject"],
+                    "participants": thread["participants"],
+                }
+                for thread in all_threads
+            ],
         }
-        
-        summary_output_path = os.path.join(output_dir, 'summary.json')
-        with open(summary_output_path, 'w', encoding='utf-8') as f:
+
+        summary_output_path = os.path.join(output_dir, "summary.json")
+        with open(summary_output_path, "w", encoding="utf-8") as f:
             json.dump(summary, f, ensure_ascii=False, indent=2)
-        
-        logger.info(f"Successfully processed {len(all_threads)} email threads with {summary['total_emails']} total emails")
+
+        logger.info(
+            f"Successfully processed {len(all_threads)} email threads with {summary['total_emails']} total emails"
+        )
         logger.info(f"Output saved to {output_dir}")
-        
+
     except Exception as e:
         logger.error(f"Error processing email data: {e}")
         raise
 
+
 if __name__ == "__main__":
     # Configure logging only when running as a script
-    logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.basicConfig(
+        level=logging.WARNING, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
 
     parser = argparse.ArgumentParser(description="Parse email threads and colleagues data")
     app_config = get_config()
-    parser.add_argument("--input-dir", type=str, default=app_config.data_raw, help="Input directory containing email files")
-    parser.add_argument("--output-dir", type=str, default=app_config.data_clean, help="Output directory to save parsed data")
-    parser.add_argument("--workers", type=int, default=max(4, (os.cpu_count() or 4)), help="Number of parallel workers for parsing")
+    parser.add_argument(
+        "--input-dir",
+        type=str,
+        default=app_config.data_raw,
+        help="Input directory containing email files",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=app_config.data_clean,
+        help="Output directory to save parsed data",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=max(4, (os.cpu_count() or 4)),
+        help="Number of parallel workers for parsing",
+    )
     args = parser.parse_args()
 
     process_email_data(args.input_dir, args.output_dir, workers=args.workers)
