@@ -36,7 +36,7 @@
 **Key properties**
 - Deterministic preprocessing (regex parsing, thread building, PII redaction)
 - Local development first; portable to cloud (Azure/GCP/AWS)
-- Clear interfaces between agents; strict JSON contracts
+- Clear interfaces between agents; strict YAML contracts
 - English‑only repository (code, comments, docs)
 
 ---
@@ -52,7 +52,7 @@ graph TD
   E --> F[Analyzer Agent]
   F --> G[Verifier Agent]
   G --> H[Composer Agent]
-  H --> I[Markdown + JSON Report]
+  H --> I[Markdown Report]
 ```
 
 **Repository layout (backend‑only)**
@@ -62,18 +62,18 @@ multi-agent-risk-reporter-poc/
 ├─ configs/               # model.yaml, pipeline.yaml
 ├─ data/
 │  ├─ raw/                # input documents (not committed)
-│  └─ clean/              # normalized/cleaned docs (gitignored)
+│  └─ clean/
+    └─ report/          # # generated reports (gitignored)
 ├─ src/
 │  ├─ agents/             # analyzer.py, verifier.py, composer.py
 │  ├─ graph/              # app.py (LangGraph wiring)
 │  ├─ ingestion/          # parser.py, pii.py
 │  ├─ retrieval/          # store.py (Chroma), retriever.py (hybrid)
-│  ├─ services/           # llm.py (OpenAI), config.py
+│  ├─ services/           # config.py
 │  ├─ types.py            # TypedDict schemas
 │  └─ cli.py              # CLI entrypoints
 ├─ scripts/               # ci_smoke.py
 ├─ tests/                 # unit + integration tests
-├─ report/                # generated reports (gitignored except samples)
 ├─ .github/workflows/     # ci.yml
 ├─ .env.example
 ├─ Makefile
@@ -106,7 +106,7 @@ make setup
 make ingest     # parse raw docs -> data/clean
 make index      # build/update Chroma index
 make run        # run Analyzer -> Verifier -> Composer
-make report     # write report/portfolio_health.md
+make report     # write data/report/portfolio_health.md
 make lint       # code quality (Black, Ruff, Mypy, Bandit)
 make test       # run pytest
 ```
@@ -130,14 +130,9 @@ uv run pytest tests/
 - `ingest` — parse & clean documents from `data/raw` to `data/clean`
 - `index` — build Chroma index at `.vectorstore/`
 - `run` — execute the LangGraph pipeline (stdout prints Markdown)
-- `report` — write final markdown to `./report/portfolio_health.md`
+- `report` — write final markdown to `./data/report/portfolio_health.md`
 - `lint` / `fmt` — quality checks (Black & Ruff), formatting
 - `test` — run pytest
-- `ci-smoke` — compile the graph, no LLM/network requests
-
-**Local smoke (no network)**
-```bash
-make ci-smoke
 ```
 
 **Run a minimal test suite**
@@ -155,16 +150,17 @@ OPENAI_API_KEY=sk-<your-key>
 VECTORSTORE_DIR=.vectorstore
 DATA_RAW=./data/raw
 DATA_CLEAN=./data/clean
+REPORT_DIR=./data/report
+DEBUG_LOGS=false
 ```
 
 **Model config (`configs/model.yaml`)**
 ```yaml
 provider: openai
 chat_model: "gpt-5-mini"
-embedding_model: "text-embedding-3-small"
+embedding_model: "Qwen3-Embedding-0.6B"
 temperature: 0.1
 max_output_tokens: 800
-json_response: true
 ```
 
 **Pipeline config (`configs/pipeline.yaml`)**
@@ -186,6 +182,8 @@ scoring:
 report:
   top_n_per_project: 5
 ```
+
+Note: `age_weight` currently not used in the scoring formula.
 
 > Agents must **not** hardcode parameters; always read from `AppConfig` / YAML.
 
@@ -217,9 +215,9 @@ report:
 ## Vector Store & Retrieval
 
 **Store**: Local **ChromaDB** (persisted at `${VECTORSTORE_DIR}`)  
-**Retrieval**: **Hybrid** strategy
-1. Lightweight **keyword/BM25 prefilter** using `prefilter_keywords`
-2. **Vector top_k** retrieval using `embedding_model`  
+**Retrieval**: **Hybrid (optional prefilter)**
+1. Optional lightweight keyword prefilter using `prefilter_keywords`
+2. If prefilter is disabled or yields no candidates, fallback to pure **vector top_k** retrieval
 3. Metadata filters (project/thread/date/roles) when available
 
 **Goal**: Minimize token usage while maximizing evidence quality. Agents should request **at most 6** chunks per project for classification.
@@ -270,11 +268,10 @@ class FlagItem(TypedDict, total=False):
 - Each item must include: `title`, `reason`, `owner_hint`, `next_step (<=15 words)`, `evidence[]`, `thread_id`, `timestamp`, and preliminary `score`
 
 **Scoring guidance**:
-- `score = role_weight + age_weight + topic_weight + repeat_weight`  
-  (weights from `configs/pipeline.yaml`)
+- `score = role_weight + topic_weight + repeat_weight`
 
 **Prompt contract (summary)**:
-- “Use ONLY the provided EVIDENCE snippets; output JSON `{"items":[...]}`. If uncertain, return `none`.”
+- “Use ONLY the provided EVIDENCE snippets; output plain YAML (no code fences). If uncertain, include with `confidence: low`.”
 
 ---
 
@@ -290,6 +287,7 @@ class FlagItem(TypedDict, total=False):
 - If the cited evidence does not explicitly support the claim, set `label: "none"` (or drop).
 - Merge near‑duplicates (same thread/topic) and **union evidence** spans.
 - Assign `confidence`: `high | mid | low`.
+- No auto-accept fallback: if nothing is verifiable, return an empty `verified` list.
 
 **Output**:
 - `verified: List[FlagItem]` (ERB/UHPAI only), top‑N by `score` (configurable)
@@ -304,7 +302,6 @@ class FlagItem(TypedDict, total=False):
 
 **Output**:
 - Markdown report (see format below)
-- Optional machine‑readable JSON mirror for automation/QA
 
 ---
 
@@ -404,8 +401,8 @@ make test
   - Update `AGENTS.md` and `docs/Blueprint.md`.
 
 - **Swap LLM provider** (e.g., Azure OpenAI)  
-  - Extend `configs/model.yaml` and `src/services/llm.py` to read provider‑specific settings.  
-  - Keep the same `chat_json` and `compose` interface.
+  - Extend `configs/model.yaml` to include provider-specific settings.  
+  - Agents construct `ChatOpenAI` using values from `AppConfig`; no dedicated LLM service layer.
 
 - **Nested AGENTS files**  
   - If you add subpackages (e.g., `packages/ingestion-service`), place an `AGENTS.md` inside each.  

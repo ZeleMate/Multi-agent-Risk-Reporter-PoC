@@ -56,7 +56,8 @@ def _load_all_chunks_from_chroma(vectorstore_dir: str, collection_name: str = "e
         if not ids or len(ids) != len(docs):
             ids = [f"doc_{i}" for i in range(len(docs))]
         chunks = [
-            {"id": i, "text": d or "", "metadata": m or {}} for i, d, m in zip(ids, docs, metas, strict=False)
+            {"id": i, "text": d or "", "metadata": m or {}}
+            for i, d, m in zip(ids, docs, metas, strict=False)
         ]
         if chunks:
             return chunks

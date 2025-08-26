@@ -3,10 +3,11 @@ Pytest configuration and shared fixtures for the multi-agent risk reporter tests
 """
 
 import os
-import pytest
-import tempfile
 import shutil
+import tempfile
 from unittest.mock import Mock, patch
+
+import pytest
 
 from src.services.config import AppConfig
 from src.types import Chunk, ChunkMetadata, EmailData, ThreadData
@@ -52,7 +53,7 @@ def sample_email_data():
         date_normalized="2024-01-15T10:30:00",
         subject="Issue with deployment",
         canonical_subject="issue deployment",
-        body="We are experiencing issues with the latest deployment. The application is not starting correctly."
+        body="We are experiencing issues with the latest deployment. The application is not starting correctly.",
     )
 
 
@@ -68,7 +69,7 @@ def sample_thread_data(sample_email_data):
         canonical_subject="issue deployment",
         start_date="2024-01-15T10:30:00",
         end_date="2024-01-15T10:30:00",
-        emails=[sample_email_data]
+        emails=[sample_email_data],
     )
 
 
@@ -93,8 +94,8 @@ def sample_chunks():
             start_date="2024-01-15T10:30:00",
             end_date="2024-01-15T10:30:00",
             chunk_size=150,
-            sentence_count=2
-        )
+            sentence_count=2,
+        ),
     )
 
     # Chunk 2 - UHPAI type (Unresolved High-Priority Action Item)
@@ -113,8 +114,8 @@ def sample_chunks():
             start_date="2024-01-14T14:20:00",
             end_date="2024-01-14T14:20:00",
             chunk_size=120,
-            sentence_count=2
-        )
+            sentence_count=2,
+        ),
     )
 
     # Chunk 3 - Neutral chunk (should not be flagged)
@@ -133,8 +134,8 @@ def sample_chunks():
             start_date="2024-01-16T09:00:00",
             end_date="2024-01-16T09:00:00",
             chunk_size=80,
-            sentence_count=2
-        )
+            sentence_count=2,
+        ),
     )
 
     chunks.extend([chunk1, chunk2, chunk3])
@@ -166,21 +167,24 @@ items:
 @pytest.fixture(autouse=True)
 def mock_env_vars():
     """Mock environment variables for tests."""
-    with patch.dict(os.environ, {
-        'OPENAI_API_KEY': 'test-key',
-        'DEBUG_LOGS': 'false',
-        'DATA_RAW': './test_data/raw',
-        'DATA_CLEAN': './test_data/clean',
-        'VECTORSTORE_DIR': './test_vectorstore',
-        'REPORT_DIR': './test_reports'
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "OPENAI_API_KEY": "test-key",
+            "DEBUG_LOGS": "false",
+            "DATA_RAW": "./test_data/raw",
+            "DATA_CLEAN": "./test_data/clean",
+            "VECTORSTORE_DIR": "./test_vectorstore",
+            "REPORT_DIR": "./test_reports",
+        },
+    ):
         yield
 
 
 @pytest.fixture
 def mock_langchain_openai(mock_openai_response):
     """Mock LangChain OpenAI for testing."""
-    with patch('src.services.config.ChatOpenAI') as mock_chat:
+    with patch("src.services.config.ChatOpenAI") as mock_chat:
         mock_instance = Mock()
         mock_instance.invoke.return_value = mock_openai_response
         mock_chat.return_value = mock_instance
@@ -190,14 +194,14 @@ def mock_langchain_openai(mock_openai_response):
 @pytest.fixture
 def mock_chroma_client():
     """Mock ChromaDB client for testing."""
-    with patch('src.retrieval.store.chromadb.Client') as mock_client:
+    with patch("src.retrieval.store.chromadb.Client") as mock_client:
         mock_collection = Mock()
         mock_collection.add.return_value = None
         mock_collection.query.return_value = {
-            'documents': [['Test document']],
-            'metadatas': [[{'file': 'test.txt', 'line_start': 1}]],
-            'distances': [[0.1]],
-            'ids': [['chunk_001']]
+            "documents": [["Test document"]],
+            "metadatas": [[{"file": "test.txt", "line_start": 1}]],
+            "distances": [[0.1]],
+            "ids": [["chunk_001"]],
         }
 
         mock_client_instance = Mock()
@@ -209,7 +213,7 @@ def mock_chroma_client():
 @pytest.fixture
 def mock_huggingface_model():
     """Mock HuggingFace model for testing."""
-    with patch('src.retrieval.store.AutoModel') as mock_model_class:
+    with patch("src.retrieval.store.AutoModel") as mock_model_class:
         mock_model = Mock()
         mock_model.eval.return_value = None
         mock_model.cuda.return_value = mock_model
@@ -223,11 +227,11 @@ def mock_huggingface_model():
 @pytest.fixture
 def mock_tokenizer():
     """Mock tokenizer for testing."""
-    with patch('src.retrieval.store.AutoTokenizer') as mock_tokenizer_class:
+    with patch("src.retrieval.store.AutoTokenizer") as mock_tokenizer_class:
         mock_tokenizer = Mock()
         mock_tokenizer.__call__.return_value = {
-            'input_ids': [[1, 2, 3, 4, 5]],
-            'attention_mask': [[1, 1, 1, 1, 1]]
+            "input_ids": [[1, 2, 3, 4, 5]],
+            "attention_mask": [[1, 1, 1, 1, 1]],
         }
 
         mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer

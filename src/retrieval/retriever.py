@@ -239,7 +239,8 @@ class HybridRetriever:
                     results["ids"][0] if results["ids"] else [],
                     results["documents"][0] if results["documents"] else [],
                     results["metadatas"][0] if results["metadatas"] else [],
-                    results["distances"][0] if results["distances"] else [], strict=False,
+                    results["distances"][0] if results["distances"] else [],
+                    strict=False,
                 )
             ):
                 formatted_results.append(

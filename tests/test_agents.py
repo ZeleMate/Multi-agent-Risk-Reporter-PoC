@@ -302,5 +302,3 @@ class TestGraph:
         mock_chat_openai.assert_called_once()
         call_args = mock_chat_openai.call_args
         assert call_args.kwargs["model"] == "gpt-5-mini"
-
-
