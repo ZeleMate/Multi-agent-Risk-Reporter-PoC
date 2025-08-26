@@ -22,7 +22,7 @@ class ModelConfig:
     """Configuration for LLM models."""
     provider: str = "openai"
     chat_model: str = "gpt-5-mini"
-    temperature: float = 0.1
+    temperature: float = 0.7
     max_output_tokens: int = 50000
     json_response: bool = True
 
@@ -45,7 +45,7 @@ class AlternativeModelConfig:
     """Configuration for alternative model."""
     provider: str = "openai"
     chat_model: str = "gpt-5"
-    temperature: float = 0.1
+    temperature: float = 0.7
     max_output_tokens: int = 50000
     json_response: bool = True
 
