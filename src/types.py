@@ -1,6 +1,5 @@
 """
 Type definitions for the multi-agent risk reporter.
-Based on AGENTS.md specification.
 """
 
 from typing import List, Dict, Any, Literal, Optional, TypedDict, Union
