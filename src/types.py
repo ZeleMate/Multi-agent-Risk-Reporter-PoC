@@ -145,10 +145,8 @@ class ModelSettings(TypedDict, total=False):
     """Model configuration settings."""
     provider: str
     chat_model: str
-    embedding_model: str
     temperature: float
     max_output_tokens: int
-    json_response: bool
 
 class RetrievalSettings(TypedDict, total=False):
     """Retrieval configuration settings."""
@@ -169,7 +167,6 @@ class ScoringSettings(TypedDict, total=False):
     """Scoring configuration settings."""
     repeat_weight: float
     topic_weight: float
-    age_weight: float
     role_weight: float
 
 class ReportSettings(TypedDict, total=False):
