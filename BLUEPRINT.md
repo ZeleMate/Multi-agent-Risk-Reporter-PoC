@@ -23,7 +23,7 @@ graph TD
 
     subgraph "Vector Layer"
         C1[Qwen Embedding Model] --> C2[ChromaDB Store]
-        C2 --> C3[Hybrid Retrieval (optional prefilter)]
+        C2 --> C3[Hybrid Retrieval for optional prefilter]
     end
 
     subgraph "AI Agents"
@@ -622,16 +622,16 @@ Ingest raw emails → produce cleaned, redacted, chunked text with metadata → 
 
 ```mermaid
 graph TD
-    A[Email Communications (.txt)] --> B[Ingestion & Cleaning]
+    A[Email Communications txt] --> B[Ingestion & Cleaning]
     B --> C[Embeddings]
     C --> D[ChromaDB Vector Store]
     D --> E[Hybrid Retrieval (optional)]
     E --> F[Analyzer Agent]
     F --> G[Verifier Agent]
     G --> H[Composer Agent]
-    H --> I[Portfolio Health Report (MD + JSON)]
+    H --> I[Portfolio Health Report]
 
-    subgraph "Ingestion"
+    subgraph Ingestion
         B1[Header Parsing] --> B2[PII Redaction]
         B2 --> B3[Thread Building]
         B3 --> B4[Chunking + Metadata]
@@ -654,7 +654,7 @@ graph LR
     D --> E[Canonical Subject]
     E --> F[Content Cleaning]
     F --> G[Chunking + Metadata]
-    G --> H[Clean Objects (JSON/Parquet)]
+    G --> H[Clean Objects]
 ```
 
 ### 1.2 Processing Details
