@@ -10,16 +10,18 @@
 
 ```mermaid
 graph TD
-    subgraph "Data Pipeline"
-        B1[Email Parsing] --> B2[PII Redaction]
-        B2 --> B3[Thread Building]
-        B3 --> B4[Text Chunking]
+    A[Email Files] --> B[Header Parsing]
+    B --> C[PII Redaction]
+    C --> D[Thread Building]
+    D --> E[Chunking + Metadata]
+
+    subgraph Vector_Layer
+        E --> F[Embeddings]
+        F --> G[ChromaDB Store]
+        G --> H[Hybrid Retrieval]
     end
 
-    subgraph "Vector Layer"
-        C1[Qwen Embedding Model] --> C2[ChromaDB Store]
-        C2 --> C3[Hybrid Retrieval for optional prefilter]
-    end
+    H --> I[Top-K Chunks]
 ```
 
 ## Critical Attention Flags
