@@ -10,11 +10,6 @@
 
 ```mermaid
 graph TD
-    A[Email Communications] --> B[Data Ingestion Pipeline]
-    B --> C[Vector Store & Retrieval]
-    C --> D[Multi-Agent Analysis]
-    D --> E[Portfolio Health Report]
-
     subgraph "Data Pipeline"
         B1[Email Parsing] --> B2[PII Redaction]
         B2 --> B3[Thread Building]
@@ -24,18 +19,6 @@ graph TD
     subgraph "Vector Layer"
         C1[Qwen Embedding Model] --> C2[ChromaDB Store]
         C2 --> C3[Hybrid Retrieval for optional prefilter]
-    end
-
-    subgraph "AI Agents"
-        D1[Analyzer Agent] --> D2[Verifier Agent]
-        D2 --> D3[Composer Agent]
-        D1 --> D4[Evidence Validation]
-        D2 --> D4
-    end
-
-    subgraph "Output"
-        E1[Executive TL;DR] --> E2[Risk Details Table]
-        E2 --> E3[Evidence Appendix]
     end
 ```
 
