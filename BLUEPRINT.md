@@ -10,7 +10,7 @@
 
 ```mermaid
 graph TD
-    A[Email Files] --> B[Header Parsing]
+    A[Email Files] --> B[Parsing]
     B --> C[PII Redaction]
     C --> D[Thread Building]
     D --> E[Chunking + Metadata]
