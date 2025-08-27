@@ -602,3 +602,331 @@ The system includes a working implementation of the analytical engine with the f
 - JSON for structured data exchange
 
 The system is designed to be production-ready with proper error handling, logging, and monitoring capabilities.
+# Portfolio Health Report System — Blueprint
+
+> This blueprint is tailored to the assignment and is production‑minded: it explains ingestion & scalability (1), defines the multi‑step AI logic with engineered prompts and runnable code (2), addresses cost & robustness (3), defines monitoring & trust (4), and highlights the biggest architectural risk with mitigations (5). Each section ends with a short **Deliverables checklist**.
+
+---
+
+## Project Overview
+
+**Business Objective**  
+Enable a Director of Engineering to prepare QBR (Quarterly Business Review) materials by converting unstructured email communications into a **concise, evidence‑backed portfolio health report**.
+
+**Core Mission**  
+Ingest raw emails → produce cleaned, redacted, chunked text with metadata → analyze with a **LangGraph multi‑agent** pipeline → output **Executive TL;DR**, **Risk Details Table**, and **Evidence Appendix**.
+
+---
+
+## Architecture Overview
+
+```mermaid
+graph TD
+    A[Email Communications (.txt)] --> B[Ingestion & Cleaning]
+    B --> C[Embeddings]
+    C --> D[ChromaDB Vector Store]
+    D --> E[Hybrid Retrieval (optional)]
+    E --> F[Analyzer Agent]
+    F --> G[Verifier Agent]
+    G --> H[Composer Agent]
+    H --> I[Portfolio Health Report (MD + JSON)]
+
+    subgraph "Ingestion"
+        B1[Header Parsing] --> B2[PII Redaction]
+        B2 --> B3[Thread Building]
+        B3 --> B4[Chunking + Metadata]
+    end
+```
+
+---
+
+## 1) Data Ingestion & Initial Processing
+
+### 1.1 Approach Overview
+
+**Scalable Email Processing Pipeline**
+
+```mermaid
+graph LR
+    A[Raw Email Files] --> B[Header Parsing]
+    B --> C[PII Redaction]
+    C --> D[Thread Reconstruction]
+    D --> E[Canonical Subject]
+    E --> F[Content Cleaning]
+    F --> G[Chunking + Metadata]
+    G --> H[Clean Objects (JSON/Parquet)]
+```
+
+### 1.2 Processing Details
+
+- **Header Parsing**: Extract `From, To, Cc, Date, Subject`. Normalize `Date` → ISO‑8601 + epoch. Canonicalize `Subject` (strip `RE:/FW:`).
+- **PII Redaction (deterministic)**: Regex removal of emails/phones/IDs performed **before** any LLM access; redaction audit log retained.
+- **Thread Building**: Stable ID `thread_id = sha1(canonical_subject | sorted_participants | date)[:12]`.
+- **Cleaning**: Remove quoted replies/signatures with heuristics; preserve **file:line** ranges for citations.
+- **Chunking**: Thread‑scope chunks (~800–1200 tokens, 80–120 overlap) with metadata: `file`, `line_start`, `line_end`, `thread_id`, `date_iso`, `roles`.
+
+### 1.3 Scalability Strategy
+
+- **Parallel ingest** with `concurrent.futures`; back‑pressure via bounded queues.  
+- **Incremental updates**: process only new/changed files (mtime index).  
+- **Partitioning**: shard by customer/project or `thread_id` prefix.  
+- **Stateless workers**: containerized jobs (Kubernetes/Azure Container Apps).  
+- **Observability**: structured logs + counters (`processed_emails`, `redactions_applied`, `chunk_count`).  
+- **Storage**: cleaned data to `data/clean/` (JSON/Parquet); embeddings persisted in **ChromaDB** at `.vectorstore/`.
+
+**Deliverables checklist**
+- [x] Explanatory ingestion section  
+- [x] Simple diagram  
+- [x] Explicit scalability notes
+
+---
+
+## 2) The Analytical Engine (Multi‑Step AI Logic)
+
+We detect two **Attention Flags** aligned with Director priorities:
+
+- **UHPAI — Unresolved High‑Priority Action Items**: questions/decisions/tasks unanswered for **> 5 days** → schedule risk.  
+- **ERB — Emerging Risks/Blockers**: potential problems or blockers **without clear mitigation** (e.g., security/payment/production issues, integration blockers).
+
+### 2.1 Multi‑Step Process (Hallucination‑resistant)
+
+```mermaid
+graph TD
+  A[Chunks] --> B[Analyzer]
+  B -->|candidates + citations| C[Verifier]
+  C -->|validated + confidence| D[Composer]
+  D --> E[Executive Report]
+```
+
+- **Analyzer**: Classifies chunks as `ERB` / `UHPAI` with **explicit citations** (`file:line`). Computes deterministic `score` from config weights.  
+- **Verifier**: Enforces **no‑evidence → no‑claim**; merges duplicates; assigns `confidence` (`high/mid/low`).  
+- **Composer**: Produces decision‑ready Markdown (Executive TL;DR, Risk Table, Appendix). Summarizes **only verified** content.
+
+**Security in the loop**
+- LLMs only see **redacted** text.  
+- Scoring is **deterministic** (code), not model‑invented.  
+- Strict **JSON schema**; validation before accept.
+
+### 2.2 Engineered Prompts (final, copy‑exact)
+
+> The following prompts are the exact versions used by code. Placeholders are resolved by the pipeline; JSON literals are shown with braces as plain text because this document is not parsed by a template engine.
+
+#### Analyzer — System Prompt
+```
+You are a senior technical program manager with 15+ years of experience supporting Directors of Engineering. You specialize in portfolio risk analysis for QBR. Be methodical, evidence-based, and prioritize quality over quantity.
+```
+
+#### Analyzer — User Prompt (template)
+```
+# PORTFOLIO HEALTH ANALYZER
+
+Objective: Identify 2–3 issues a Director must see for QBR.
+
+Attention Flags:
+1) UHPAI — unanswered for > {uhpai_aging_days} days
+2) ERB — risks/blockers without clear mitigation
+Critical terms (ERB): {erb_critical_terms}
+
+Scoring weights:
+- role_weights: {role_weights}
+- age_weight: {age_weight}
+- topic_weight: {topic_weight}
+- repeat_weight: {repeat_weight}
+
+Rules:
+- Use only provided evidence; never invent.
+- Each item must cite file:line that directly supports the claim.
+- If uncertain, exclude.
+- Limit to the 2–3 highest-impact items.
+
+Project context:
+{project_context}
+
+Evidence to analyze:
+{evidence_text}
+
+Return JSON exactly like:
+{
+  "items": [
+    {
+      "label": "uhpai" | "erb",
+      "title": "...",
+      "reason": "...",
+      "owner_hint": "...",
+      "next_step": "...",                # ≤15 words
+      "evidence": [{"file":"...","lines":"12-24"}],
+      "thread_id": "...",
+      "timestamp": "...",
+      "confidence": "high" | "mid" | "low",
+      "days_unresolved": N,
+      "business_impact": "...",          # e.g., schedule_delay, production_stability
+      "score": 0.0
+    }
+  ]
+}
+If nothing valid, return: { "items": [] }
+```
+
+#### Verifier — System Prompt
+```
+You are a technical evidence auditor. Your mission: prevent misinformation by rejecting any claim not explicitly supported by cited evidence. Merge duplicates, assign confidence.
+```
+
+#### Verifier — User Prompt (template)
+```
+INPUT (candidates):
+{candidates_json}
+
+INPUT (full evidence for cited spans):
+{evidence_json}
+
+Validation rules:
+- Reject if evidence does not explicitly support the claim.
+- Merge near-duplicates (same thread/topic); union citations.
+- Assign confidence: high/mid/low.
+- Keep only ERB/UHPAI.
+
+Return JSON:
+{
+  "items": [ ...verified FlagItem objects... ]
+}
+```
+
+#### Composer — System Prompt
+```
+You are an executive communications specialist. Produce a concise, decision-ready report for a Director of Engineering. Never add facts; summarize only verified content.
+```
+
+#### Composer — User Prompt (template)
+```
+INPUT (verified items):
+{verified_json}
+
+Write Markdown with:
+1) Executive TL;DR (3–6 bullets, prioritized)
+2) Risk Details Table (Type, Title, Why it matters, Owner, Next step, Evidence file:line)
+3) Evidence Appendix (≤2 lines per item, with citations)
+
+Also return a machine-readable JSON mirror of the table.
+```
+
+### 2.3 Runnable Python (detection logic excerpt)
+
+A minimal runner showing how the prompts are executed (the repository contains the full LangGraph pipeline):
+
+```python
+# scripts/minimal_runner.py
+import json
+from typing import Dict, Any
+from openai import OpenAI
+
+def call_openai_json(client: OpenAI, model: str, system: str, user: str, temperature: float = 0.1, max_tokens: int = 800) -> Dict[str, Any]:
+    resp = client.chat.completions.create(
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        messages=[{"role":"system","content":system},{"role":"user","content":user}],
+        response_format={"type":"json_object"},
+    )
+    try:
+        return json.loads(resp.choices[0].message.content)
+    except Exception:
+        return {"items": []}
+
+# Analyzer invocation (Verifier/Composer are analogous)
+def analyze(client: OpenAI, model: str, analyzer_system: str, analyzer_user_tmpl: str, ctx: str, evidence: str, cfg: Dict[str, Any]):
+    user = analyzer_user_tmpl.format(
+        project_context=ctx,
+        evidence_text=evidence,
+        uhpai_aging_days=cfg["flags"]["uhpai"]["aging_days"],
+        erb_critical_terms=", ".join(cfg["flags"]["erb"]["critical_terms"]),
+        role_weights=json.dumps(cfg["flags"]["uhpai"]["role_weights"]),
+        age_weight=cfg["scoring"]["age_weight"],
+        topic_weight=cfg["scoring"]["topic_weight"],
+        repeat_weight=cfg["scoring"]["repeat_weight"],
+    )
+    return call_openai_json(client, model, analyzer_system, user).get("items", [])
+```
+
+**Deliverables checklist**
+- [x] Explanatory section with justification  
+- [x] Runnable Python excerpt  
+- [x] Final engineered prompts embedded
+
+---
+
+## 3) Cost & Robustness Considerations
+
+### Robustness
+- **No‑evidence → No‑claim** enforced by prompt + code.  
+- **Verifier gate** removes unsupported/duplicated items; assigns `confidence`.  
+- **Deterministic scoring** in code; LLM never invents numbers.  
+- **Schema validation** (TypedDict/Pydantic) with fail‑closed behavior.  
+- **PII‑first redaction** and redaction audit logs.
+
+### Cost Management
+- **Model tiering**: `gpt‑5‑mini` for Analyzer/Verifier; `gpt‑5` for Composer only.  
+- **Hybrid retrieval** to minimize tokens per run.  
+- **Token budgets**: small `max_tokens`, top‑k evidence.  
+- **Local embeddings** (Qwen) → zero embedding API cost.  
+- **Incremental analysis**: cache unchanged threads; batch processing.
+
+**Deliverables checklist**
+- [x] Concise robustness & cost section
+
+---
+
+## 4) Monitoring & Trust
+
+**Quality Metrics**
+- **evidence_coverage**: % items with ≥1 valid citation (target: 100%).  
+- **hallucination_rate**: % items rejected by verifier (target: ≤ 5%).  
+- **precision@k** on curated gold set.  
+- **executive_usefulness**: 1–5 feedback score.
+
+**Operational Metrics**
+- tokens_per_run / tokens_per_item  
+- stage_latency_p50/p95  
+- retriever_hit_rate  
+- ingestion_error_rate
+
+**Observability**
+- Structured logs with `run_id`  
+- Optional tracing (Langfuse/OpenTelemetry)  
+- Redaction audit logs
+
+**Deliverables checklist**
+- [x] Monitoring plan with concrete metrics
+
+---
+
+## 5) Architectural Risk & Mitigation
+
+**Biggest Risk — Evidence Quality Degradation at Scale**  
+Large, noisy threads may slip through and erode trust.
+
+**Mitigation**
+- Tighten prefilter (domain keywords + metadata filters).  
+- Increase Verifier strictness; add quote‑match corroboration.  
+- Confidence thresholds; route `low` to human review.  
+- Track `hallucination_rate`; alert on regression; periodic audits.
+
+**Deliverables checklist**
+- [x] Single risk clearly stated with mitigations
+
+---
+
+## Appendix — Scoring & Keywords (reference)
+
+**Priority score**  
+`score = role_weight + (age_weight × days_unresolved) + topic_weight + repeat_weight`
+
+**Role weights (example)**: `{"director": 2.0, "pm": 1.5, "ba": 1.2, "dev": 1.0}`  
+**Topic weight (example)**: `0.7` if critical keywords present, else `0.0`  
+**Repeat weight (example)**: `0.5` per repeated mention (capped)  
+**UHPAI aging threshold**: `5 days` (configurable)
+
+**Critical terms (excerpt)**:  
+`blocked`, `waiting on`, `missing`, `unclear`, `cannot`, `security`, `payment`, `prod`, `asap`, `urgent`, `deadline`, `unresolved`, `issue`, `error`, `bug`, `clarification`, `question`, `help`
+
+---
