@@ -6,7 +6,11 @@
 
 **Core Mission**: Transform unstructured email communications into structured, evidence-backed risk reports that help executives quickly identify and prioritize the highest-impact issues across their entire project portfolio.
 
-## Architecture Overview
+## 1. Data Ingestion & Initial Processing
+
+### Approach Overview
+
+**Scalable Email Processing Pipeline**:
 
 ```mermaid
 graph TD
@@ -22,47 +26,6 @@ graph TD
     end
 
     H --> I[Top-K Chunks]
-```
-
-## Critical Attention Flags
-
-### 1. **UHPAI (Unresolved High-Priority Action Items)**
-**Definition**: Questions, decisions, or tasks that have gone unanswered/unaddressed for >5 days
-
-**Business Impact**: These represent stalled progress and potential schedule slippage
-
-**Examples**:
-- Unanswered technical questions blocking development
-- Pending architectural decisions
-- Missing approvals or clarifications
-- Escalation points requiring management attention
-
-### 2. **ERB (Emerging Risks/Blockers)**
-**Definition**: Potential problems or obstacles identified in communications that lack a clear resolution path
-
-**Business Impact**: These could cause delays, quality issues, or cost overruns
-
-**Examples**:
-- Staging environment inconsistencies or anomalies
-- Production code bugs affecting user experience
-- Technical blockers or dependencies
-- Security, payment, or production concerns
-
-## 1. Data Ingestion & Initial Processing
-
-### Approach Overview
-
-**Scalable Email Processing Pipeline**:
-
-```mermaid
-graph LR
-    A[Raw Email Files] --> B[Header Parsing]
-    B --> C[Thread Reconstruction]
-    C --> D[Canonical Subject Processing]
-    D --> E[Participant Normalization]
-    E --> F[Date Standardization]
-    F --> G[Content Cleaning]
-    G --> H[Structured Email Objects]
 ```
 
 ### Processing Strategy
@@ -605,23 +568,8 @@ Ingest raw emails → produce cleaned, redacted, chunked text with metadata → 
 
 ## Architecture Overview
 
-```mermaid
-graph TD
-    A[Email Communications txt] --> B[Ingestion & Cleaning]
-    B --> C[Embeddings]
-    C --> D[ChromaDB Vector Store]
-    D --> E[Hybrid Retrieval (optional)]
-    E --> F[Analyzer Agent]
-    F --> G[Verifier Agent]
-    G --> H[Composer Agent]
-    H --> I[Portfolio Health Report]
-
-    subgraph Ingestion
-        B1[Header Parsing] --> B2[PII Redaction]
-        B2 --> B3[Thread Building]
-        B3 --> B4[Chunking + Metadata]
-    end
-```
+**Architecture:** Ingestion & Cleaning → Embeddings → ChromaDB → (optional) Hybrid Retrieval → Analyzer Agent → Verifier Agent → Composer Agent → Portfolio Health Report.
+**Ingestion sub-steps:** Header parsing → PII redaction → Thread building → Chunking + metadata.
 
 ---
 
@@ -675,22 +623,10 @@ We detect two **Attention Flags** aligned with Director priorities:
 
 ### 2.1 Multi‑Step Process (Hallucination‑resistant)
 
-```mermaid
-graph TD
-  A[Chunks] --> B[Analyzer]
-  B -->|candidates + citations| C[Verifier]
-  C -->|validated + confidence| D[Composer]
-  D --> E[Executive Report]
-```
-
-- **Analyzer**: Classifies chunks as `ERB` / `UHPAI` with **explicit citations** (`file:line`). Computes deterministic `score` from config weights.  
-- **Verifier**: Enforces **no‑evidence → no‑claim**; merges duplicates; assigns `confidence` (`high/mid/low`).  
-- **Composer**: Produces decision‑ready Markdown (Executive TL;DR, Risk Table, Appendix). Summarizes **only verified** content.
-
-**Security in the loop**
-- LLMs only see **redacted** text.  
-- Scoring is **deterministic** (code), not model‑invented.  
-- Strict **JSON schema**; validation before accept.
+**Process:**
+1) Analyzer — classifies ERB/UHPAI from retrieved chunks with strict file:line citations and computes deterministic score.
+2) Verifier — enforces no‑evidence → no‑claim, merges duplicates, assigns confidence (high/mid/low).
+3) Composer — produces Executive TL;DR, Risk Table, and Evidence Appendix strictly from verified items.
 
 ### 2.2 Engineered Prompts (final, copy‑exact)
 
