@@ -188,6 +188,3 @@ exclude_lines = [
 [tool.bandit]
 exclude_dirs = ["tests", "venv", ".venv"]
 skips = ["B101", "B601", "B110"]
-
-[tool.ruff.isort]
-known-first-party = ["src"]
