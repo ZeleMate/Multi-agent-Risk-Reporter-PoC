@@ -9,30 +9,17 @@ from src.services.config import get_config
 
 
 def _escape_braces(text: str) -> str:
-    # Escape braces for LangChain templates - convert single braces to double braces
+    """Escape braces in text for safe string formatting."""
     return text.replace("{", "{{").replace("}", "}}")
 
 
 def get_analyzer_prompt(
-    chunks: list[dict[str, Any]], project_context: str = "", config=None
+    chunks: list[dict[str, Any]], project_context: str = "", config: Any = None
 ) -> str:
-    """
-    Generate analyzer prompt for risk classification - PORTFOLIO HEALTH FOCUS.
-
-    Args:
-        chunks: List of evidence chunks with metadata
-        project_context: Additional project context
-        config: Configuration object (optional, will use get_config() if None)
-
-    Returns:
-        Formatted prompt for analyzer agent
-    """
-
-    # Get config if not provided
+    """Get the analyzer prompt for analyzer agent."""
     if config is None:
         config = get_config()
 
-    # Format evidence chunks with enhanced metadata
     evidence_text = ""
     for i, chunk in enumerate(chunks, 1):
         metadata = chunk.get("metadata", {})
@@ -51,7 +38,6 @@ CONTENT:
 ---
 """
 
-    # Format template variables for f-string
     project_context_formatted = project_context if project_context else ""
 
     prompt = f"""# PORTFOLIO HEALTH ANALYZER AGENT
@@ -75,7 +61,7 @@ You are analyzing project communications for a **Director of Engineering** who n
 ### 2. **ERB (Emerging Risks/Blockers)**
 **Definition**: Potential problems or obstacles identified in communications that lack a clear resolution path
 **Business Impact**: These could cause delays, quality issues, or cost overruns
-**Critical Terms**: {{', '.join(config['erb']['critical_terms'])}}
+**Critical Terms**: {config.flags.erb["critical_terms"]}
 **Examples**:
 - Staging environment inconsistencies or anomalies
 - Production code bugs affecting user experience
@@ -87,23 +73,23 @@ You are analyzing project communications for a **Director of Engineering** who n
 ## SCORING METHODOLOGY
 
 Calculate priority score using these weights:
-- **Role Weight**: {{config['uhpai']['role_weights']}} (higher = more critical)
-- **Topic Weight**: {{config['scoring']['topic_weight']}} (keyword match relevance)
-- **Repeat Weight**: {{config['scoring']['repeat_weight']}} (mentioned multiple times)
+- **Role Weight**: {config.flags.uhpai["role_weights"]} (higher = more critical)
+- **Topic Weight**: {config.scoring.topic_weight} (keyword match relevance)
+- **Repeat Weight**: {config.scoring.repeat_weight} (mentioned multiple times)
 
 **Formula**: score = role_weight + topic_weight + repeat_weight
 
 ## EVIDENCE REQUIREMENTS (PRACTICAL)
 
 **Guidelines:**
-- Avoid inventing facts, but you may include plausible items with clear quotes and set "confidence": "low".
-- If the chunk clearly contains risk signals (e.g., blocked, waiting on, urgent), include the item with conservative wording.
+- Avoid inventing facts. Include plausible items when the chunk shows direct or strongly implied risk signals; set "confidence": "low" for inferred items.
+- If the chunk clearly contains risk signals (e.g., blocked, waiting on, urgent, missing, unclear, cannot), include the item with conservative wording.
 - Use explicit citations; if exact line is unclear, use the chunk metadata line range (approximate) and include up to two short quotes.
 
 **Evidence Quality Standards:**
 - Use file:line citations from metadata (exact or approximate) and quote relevant text succinctly.
 - Content should reasonably support the claim; when in doubt, lower confidence instead of dropping.
-- Preserve context; avoid over-interpretation.
+- Preserve context; avoid over-interpretation. Prefer inclusion with "confidence": "low" over returning an empty list.
 
 ## EXECUTIVE FOCUS AREAS
 
@@ -116,14 +102,14 @@ Calculate priority score using these weights:
 
 ## OUTPUT SPECIFICATIONS
 
-Return ONLY plain YAML (no code fences) with this structure:
+Return ONLY plain YAML (no code fences) with this structure. Use proper YAML quoting for strings containing special characters:
 
 items:
   - label: uhpai  # or erb; NEVER none for valid findings
-    title: Critical path blocked by missing API specs
-    reason: Development team cannot proceed with user authentication module due to missing API documentation. The specification was requested 12 days ago but still not provided. This directly impacts the Q2 delivery milestone for the login system.
+    title: "Critical path blocked by missing API specs"
+    reason: "Development team cannot proceed with user authentication module due to missing API documentation. The specification was requested 12 days ago but still not provided. This directly impacts the Q2 delivery milestone for the login system."
     owner_hint: BA
-    next_step: Provide complete API specs within 24 hours
+    next_step: "Provide complete API specs within 24 hours"
     evidence:
       - file: data/raw/Project_Phoenix/email1.txt
         lines: "15-22"
@@ -159,26 +145,9 @@ items:
 
 **Executive Mindset**: Think like a Director - what would keep you up at night regarding QBR preparation?
 
-Always return 1–3 items. If strong evidence is unavailable, output the best candidates with "confidence": "low" and ensure each has at least one evidence citation (approximate file:line if exact is unclear from the chunk).
+Always return 1–3 items. If strong evidence is unavailable, output the best candidates with "confidence": "low" and ensure each has at least one evidence citation (approximate file:line if exact is unclear from the chunk). Include items when multiple weak signals collectively suggest a blocker or unresolved action.
 
 Analyze the evidence with surgical precision and return only the highest-impact risks that demand executive attention."""
-
-    # Substitute config variables
-    prompt = prompt.replace(
-        "{{config['uhpai']['aging_days']}}", str(config.flags.uhpai["aging_days"])
-    )
-    prompt = prompt.replace(
-        "{{config['erb']['critical_terms']}}", str(config.flags.erb["critical_terms"])
-    )
-    prompt = prompt.replace(
-        "{{config['uhpai']['role_weights']}}", str(config.flags.uhpai["role_weights"])
-    )
-    prompt = prompt.replace(
-        "{{config['scoring']['topic_weight']}}", str(config.scoring.topic_weight)
-    )
-    prompt = prompt.replace(
-        "{{config['scoring']['repeat_weight']}}", str(config.scoring.repeat_weight)
-    )
 
     return prompt
 
