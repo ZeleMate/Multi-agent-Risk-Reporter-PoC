@@ -33,7 +33,7 @@ def verifier_agent(state: OverallState) -> VerifierResponse:
 
     # Parse YAML response
     try:
-        import yaml
+        import yaml  # type: ignore[import-untyped]
 
         data = yaml.safe_load(response_text)
     except Exception as e:
