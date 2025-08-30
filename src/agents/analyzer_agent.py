@@ -47,7 +47,7 @@ def analyzer_agent(state: OverallState) -> AnalyzerResponse:
 
     # Parse YAML response
     try:
-        import yaml  # type: ignore[import]
+        import yaml  # type: ignore[import-untyped]
 
         response = yaml.safe_load(response_text)
     except Exception as e:
