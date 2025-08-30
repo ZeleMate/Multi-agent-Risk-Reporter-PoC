@@ -14,16 +14,30 @@ from src.services.config import get_config
 logger = logging.getLogger(__name__)
 
 
+def map_analyzer_items_to_candidates(state: OverallState) -> dict[str, Any]:
+    """Map analyzer output 'items' to 'candidates' for downstream nodes.
+
+    This maintains backward compatibility with analyzer returning 'items'
+    while the verifier expects 'candidates'.
+    """
+    items = state.get("items", [])  # type: ignore[assignment]
+    if items:
+        return {"candidates": items}
+    return {}
+
+
 def create_graph() -> Any:
     """Create the overall graph."""
     graph = StateGraph(OverallState)
 
     graph.add_node("analyzer", analyzer_agent)
+    graph.add_node("map_items", map_analyzer_items_to_candidates)
     graph.add_node("verifier", verifier_agent)
     graph.add_node("composer", composer_agent)
 
     graph.add_edge(START, "analyzer")
-    graph.add_edge("analyzer", "verifier")
+    graph.add_edge("analyzer", "map_items")
+    graph.add_edge("map_items", "verifier")
     graph.add_edge("verifier", "composer")
     graph.add_edge("composer", END)
 
