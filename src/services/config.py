@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -173,8 +173,6 @@ class ConfigManager:
     @staticmethod
     def _filter_dataclass_kwargs(cls: type, data: dict[str, Any]) -> dict[str, Any]:
         """Filter incoming dict to only include kwargs that exist on the dataclass."""
-        if not isinstance(data, dict):
-            return {}
         field_names = {f.name for f in cls.__dataclass_fields__.values()}  # type: ignore[attr-defined]
         return {k: v for k, v in data.items() if k in field_names}
 
@@ -229,8 +227,8 @@ class ConfigManager:
                             AlternativeModelConfig, model_data["alternative_model"]
                         )
                         config.alternative_model = AlternativeModelConfig(**alt_data)
-                    else:
-                        # Set default alternative model if not specified
+                    # Always ensure alternative model is present
+                    if not getattr(config, "alternative_model", None):
                         config.alternative_model = AlternativeModelConfig()
 
                     # Load agent models config
