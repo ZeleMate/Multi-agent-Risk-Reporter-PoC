@@ -98,7 +98,7 @@ class FlagsConfig:
 
     uhpai: dict[str, Any] = field(
         default_factory=lambda: {
-            "aging_days": 5,
+            "aging_days": 10,
             "role_weights": {"director": 2.0, "pm": 1.5, "ba": 1.2, "dev": 1.0},
         }
     )
@@ -106,15 +106,29 @@ class FlagsConfig:
         default_factory=lambda: {
             "critical_terms": [
                 "blocked",
+                "blocking",
                 "waiting on",
+                "pending",
+                "delay",
+                "on hold",
                 "missing",
                 "unclear",
                 "cannot",
+                "can't",
                 "security",
                 "payment",
                 "prod",
-                "critical",
-                "urgent",
+                "production",
+                "staging",
+                "incident",
+                "outage",
+                "bug",
+                "error",
+                "workaround",
+                "specs",
+                "specification",
+                "dependency",
+                "dependencies",
             ]
         }
     )

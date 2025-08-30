@@ -11,7 +11,7 @@ retrieval:
 
 flags:
   uhpai:
-    aging_days: 3
+    aging_days: 10
     role_weights: {"director": 2.0, "pm": 1.5, "ba": 1.2, "dev": 1.0}
   erb:
     critical_terms: [
