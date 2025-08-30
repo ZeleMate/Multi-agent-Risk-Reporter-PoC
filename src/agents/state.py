@@ -9,6 +9,7 @@ class OverallState(TypedDict):
     messages: Annotated[list[str], add_messages]
     chunks: list[dict[str, Any]]
     project_context: str
+    items: list[FlagItem]
     candidates: list[FlagItem]
     verified: list[FlagItem]
     report: str
