@@ -3,43 +3,44 @@ Composer Agent Prompts
 Report generation and executive summary prompts.
 """
 
-from typing import Any
-
 from ..types import FlagItem
 
 
-def _escape_braces(text: str) -> str:
+def _escape_braces(text: str | None) -> str:
+    """Escape braces in text for safe string formatting. Handles None values."""
+    if text is None:
+        return "Unknown"
     return text.replace("{", "{{").replace("}", "}}")
 
 
 def get_composer_prompt(verified_risks: list[FlagItem], project_context: str = "") -> str:
-    """
-    Generate composer prompt for executive report creation - PORTFOLIO HEALTH FOCUS.
-
-    Args:
-        verified_risks: List of verified risks from verifier
-        project_context: Additional project context
-
-    Returns:
-        Formatted prompt for composer agent
-    """
-
-    # Format verified risks with enhanced detail
+    """Get the composer prompt for composer agent."""
     risks_text = ""
     for i, risk in enumerate(verified_risks, 1):
+        label = risk.get("label", "none")
+        title = risk.get("title", "Unknown")
+        reason = risk.get("reason", "Unknown")
+        owner_hint = risk.get("owner_hint", "Unknown")
+        next_step = risk.get("next_step", "Unknown")
+        confidence = risk.get("confidence", "Unknown")
+        score = risk.get("score", 0.0)
+        thread_id = risk.get("thread_id", "Unknown")
+        evidence = risk.get("evidence", [])
+        validation_notes = risk.get("validation_notes", "None")
+
         risks_text += f"""
 RISK {i}:
-Type: {risk.get('label', 'Unknown').upper()}
-Title: {_escape_braces(risk.get('title', 'Unknown'))}
-Reason: {_escape_braces(risk.get('reason', 'Unknown'))}
-Owner: {_escape_braces(risk.get('owner_hint', 'Unknown'))}
-Next Step: {_escape_braces(risk.get('next_step', 'Unknown'))}
-Confidence: {_escape_braces(risk.get('confidence', 'Unknown'))}
-Score: {risk.get('score', 0)}
-Thread ID: {_escape_braces(risk.get('thread_id', 'Unknown'))}
-Evidence Citations: {len(risk.get('evidence', []))} references
+Type: {label.upper()}
+Title: {_escape_braces(title)}
+Reason: {_escape_braces(reason)}
+Owner: {_escape_braces(owner_hint)}
+Next Step: {_escape_braces(next_step)}
+Confidence: {_escape_braces(confidence)}
+Score: {score}
+Thread ID: {_escape_braces(thread_id)}
+Evidence Citations: {len(evidence)} references
 
-Validation Notes: {risk.get('validation_notes', 'None')}
+Validation Notes: {_escape_braces(validation_notes)}
 
 ---
 """
@@ -190,70 +191,3 @@ Your specialization includes:
 - Actionable insight creation from technical data
 
 You are known for reports that are concise, business-focused, and immediately drive executive action."""
-
-
-def get_composer_report_templates() -> dict[str, str]:
-    """Get report templates for different scenarios."""
-    return {
-        "executive_summary": """
-## Executive Summary
-
-{bullet_points}
-
-**Overall Risk Assessment:** {risk_level}
-**Immediate Actions Required:** {action_count}
-**Timeline Impact:** {timeline_impact}
-""",
-        "risk_table": """## Risk Details
-
-| Type | Title | Why it matters | Owner | Next step | Evidence |
-|------|-------|----------------|--------|-----------|----------|
-{rows}
-""",
-        "evidence_section": """## Evidence Appendix
-
-{evidence_entries}
-""",
-        "empty_report": """# Portfolio Health Report - QBR Preparation
-
-## Executive Summary
-
-**No critical risks identified** in the current portfolio analysis.
-
-**Overall Risk Assessment:** Low
-**Immediate Actions Required:** None
-**Timeline Impact:** No significant impact on QBR objectives
-
-## Risk Details
-
-No risks requiring executive attention were identified in the email analysis.
-
-## Analysis Notes
-
-- All project communications reviewed across portfolio
-- No staging environment issues or production bugs found
-- No unresolved action items or miscommunications detected
-- Standard project communication patterns observed
-- Portfolio health is strong for QBR preparation
-- Continue monitoring for any emerging issues
-""",
-    }
-
-
-def get_composer_formatting_rules() -> dict[str, Any]:
-    """Get formatting and style rules for reports."""
-    return {
-        "max_title_length": 10,
-        "max_next_step_length": 15,
-        "max_evidence_lines": 2,
-        "executive_bullets": "3-6",
-        "table_columns": ["Type", "Title", "Why it matters", "Owner", "Next step", "Evidence"],
-        "markdown_syntax": {
-            "header1": "#",
-            "header2": "##",
-            "header3": "###",
-            "bold": "**",
-            "italic": "*",
-            "table_separator": "|",
-        },
-    }
