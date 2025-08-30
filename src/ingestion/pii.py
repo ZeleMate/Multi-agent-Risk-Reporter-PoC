@@ -18,11 +18,18 @@ class PIIRedactor:
         self._known_names_regex = None
         if self.known_people:
             try:
-                names = [re.escape(person.get("name", "")) for person in self.known_people.values() if person.get("name")]
+                names = [
+                    re.escape(person.get("name", ""))
+                    for person in self.known_people.values()
+                    if person.get("name")
+                ]
                 if names:
-                    self._known_names_regex = re.compile("|".join(sorted(names, key=len, reverse=True)))
-            except Exception:
-                pass
+                    self._known_names_regex = re.compile(
+                        "|".join(sorted(names, key=len, reverse=True))
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to compile known names regex: {e}")
+                self._known_names_regex = None
 
     def redact_text(self, text: str) -> str:
         """Redact PII from text."""

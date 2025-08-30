@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Chunk:
     """Represents a text chunk with metadata."""
+
     text: str
     chunk_id: str
     file: str
@@ -56,7 +57,7 @@ class EmailChunker:
         sentences = self.split_into_sentences(full_text)
 
         # Create chunks
-        current_chunk = []
+        current_chunk: list[str] = []
         current_tokens = 0
         chunk_index = 0
 

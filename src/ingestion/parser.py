@@ -1,10 +1,7 @@
-
-import hashlib
 import json
 import logging
 import os
 import re
-
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -23,7 +20,8 @@ def normalize_date(date_str: str) -> dict[str, Any]:
     try:
         dt = parsedate_to_datetime(date_str)
         return {"normalized_date": dt.isoformat(), "epoch_timestamp": int(dt.timestamp())}
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Date parsing failed for '{date_str}': {e}")
         return {"normalized_date": date_str, "epoch_timestamp": None}
 
 
@@ -40,7 +38,11 @@ def parse_colleagues(colleagues_path: str) -> dict[str, dict[str, str]]:
                 match = re.match(r"(.+?):\s*(.+?)\s*\((.+?)\)", line)
                 if match:
                     role, name, email = match.groups()
-                    colleagues[email] = {"name": name.strip(), "role": role.strip(), "email": email.strip()}
+                    colleagues[email] = {
+                        "name": name.strip(),
+                        "role": role.strip(),
+                        "email": email.strip(),
+                    }
 
         return colleagues
 
@@ -58,9 +60,9 @@ def parse_email_thread(
             content = file.read()
 
         # Split content into individual emails
-        email_matches = []
+        email_matches: list[str] = []
         lines = content.split("\n")
-        current_email = []
+        current_email: list[str] = []
 
         for line in lines:
             if line.startswith("From:"):
@@ -113,14 +115,15 @@ def parse_email_thread(
         return {}
 
 
-
 def parse_single_email(
     email_content: str, colleagues: dict[str, dict[str, str]], redactor: PIIRedactor
 ) -> dict[str, Any] | None:
     """Parse a single email."""
     try:
         # Extract From field
-        from_match = re.search(r"From:\s*(.+?)\s*<([^>]+)>|From:\s*(.+?)\s+([^\s]+@[^\s]+)", email_content)
+        from_match = re.search(
+            r"From:\s*(.+?)\s*<([^>]+)>|From:\s*(.+?)\s+([^\s]+@[^\s]+)", email_content
+        )
         if not from_match:
             logger.warning("Could not parse From line")
             return None
@@ -141,14 +144,20 @@ def parse_single_email(
         # Extract Date and Subject
         date_match = re.search(r"Date:\s*(.+?)(?:\n|$)", email_content, re.MULTILINE)
         date_str = date_match.group(1).strip() if date_match else ""
-        date_normalized = normalize_date(date_str) if date_str else {"normalized_date": "", "epoch_timestamp": None}
+        date_normalized = (
+            normalize_date(date_str)
+            if date_str
+            else {"normalized_date": "", "epoch_timestamp": None}
+        )
 
         subject_match = re.search(r"Subject:\s*(.+?)(?:\n|$)", email_content, re.MULTILINE)
         subject = subject_match.group(1).strip() if subject_match else ""
 
         # Extract body (everything after headers)
         lines = email_content.split("\n")
-        body_start = next((i + 1 for i, line in enumerate(lines) if line.strip() == "" and i > 0), 0)
+        body_start = next(
+            (i + 1 for i, line in enumerate(lines) if line.strip() == "" and i > 0), 0
+        )
         body = "\n".join(lines[body_start:]).strip()
 
         # Get sender info from colleagues
@@ -209,7 +218,7 @@ def process_email_data(input_dir: str, output_dir: str) -> None:
 
         # Find colleagues file
         colleagues_file = None
-        for root, dirs, files in os.walk(input_dir):
+        for root, _dirs, files in os.walk(input_dir):
             if "Colleagues.txt" in files:
                 colleagues_file = os.path.join(root, "Colleagues.txt")
                 break
@@ -231,16 +240,24 @@ def process_email_data(input_dir: str, output_dir: str) -> None:
                 "person_id": person_id,
                 "name": data["name"],
                 "role": data["role"],
-                "email_redacted": "[EMAIL]"
+                "email_redacted": "[EMAIL]",
             }
 
         # Build known_people for redactor
-        known_people = {email: {"person_id": data["person_id"], "name": data["name"], "role": data["role"]}
-                       for email, data in person_data.items()}
+        known_people = {
+            email: {"person_id": data["person_id"], "name": data["name"], "role": data["role"]}
+            for email, data in person_data.items()
+        }
 
         # Save colleagues data (PII protected)
-        colleagues_clean = {email: {"person_id": data["person_id"], "role": data["role"], "email_redacted": data["email_redacted"]}
-                           for email, data in person_data.items()}
+        colleagues_clean = {
+            email: {
+                "person_id": data["person_id"],
+                "role": data["role"],
+                "email_redacted": data["email_redacted"],
+            }
+            for email, data in person_data.items()
+        }
 
         redactor = PIIRedactor(known_people=known_people)
 
@@ -250,7 +267,7 @@ def process_email_data(input_dir: str, output_dir: str) -> None:
 
         # Find and parse email files
         email_files = []
-        for root, dirs, files in os.walk(input_dir):
+        for root, _dirs, files in os.walk(input_dir):
             for file in files:
                 if file.startswith("email") and file.endswith(".txt"):
                     email_files.append(os.path.join(root, file))
@@ -267,9 +284,11 @@ def process_email_data(input_dir: str, output_dir: str) -> None:
 
         # Create and save chunks
         app_config = get_config()
-        chunks = create_chunks(all_threads,
-                              chunk_size=getattr(app_config.chunking, "chunk_size", 1000),
-                              overlap=getattr(app_config.chunking, "overlap", 100))
+        chunks = create_chunks(
+            all_threads,
+            chunk_size=getattr(app_config.chunking, "chunk_size", 1000),
+            overlap=getattr(app_config.chunking, "overlap", 100),
+        )
 
         with open(os.path.join(output_dir, "chunks.json"), "w", encoding="utf-8") as f:
             json.dump(chunks, f, ensure_ascii=False, indent=2)
