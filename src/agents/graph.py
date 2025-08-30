@@ -1,8 +1,8 @@
 import argparse
+import logging
 import os
+from typing import Any
 
-import chromadb
-from chromadb.config import Settings
 from langgraph.graph import END, START, StateGraph
 
 from src.agents.analyzer_agent import analyzer_agent
@@ -11,8 +11,10 @@ from src.agents.state import OverallState
 from src.agents.verifier_agent import verifier_agent
 from src.services.config import get_config
 
+logger = logging.getLogger(__name__)
 
-def create_graph() -> StateGraph:
+
+def create_graph() -> "StateGraph":
     """Create the overall graph."""
     graph = StateGraph(OverallState)
 
@@ -30,88 +32,50 @@ def create_graph() -> StateGraph:
     return graph
 
 
-def _load_all_chunks_from_chroma(vectorstore_dir: str, collection_name: str = "email_chunks"):
-    client = chromadb.PersistentClient(
-        path=vectorstore_dir, settings=Settings(anonymized_telemetry=False)
-    )
-    collection = client.get_collection(name=collection_name)
-    total = collection.count()
-    if total <= 0:
-        return []
-    # Try fetching all rows with explicit limit; if still empty, fallback to paging
+def _load_chunks_from_chroma(vectorstore_dir: str) -> list[dict[str, Any]]:
+    """Load chunks from ChromaDB."""
     try:
-        raw = collection.get(include=["documents", "metadatas"], limit=total, offset=0)
-        # Chroma get() doesn't support ids in include; ids may be absent
-        ids = []
+        import chromadb
+        from chromadb.config import Settings
+
+        client = chromadb.PersistentClient(
+            path=vectorstore_dir, settings=Settings(anonymized_telemetry=False)
+        )
+        collection = client.get_collection(name="email_chunks")
+        raw = collection.get(include=["documents", "metadatas"])
         docs = raw.get("documents", []) or []
         metas = raw.get("metadatas", []) or []
-        # Some backends may return nested lists; flatten if needed
-        if ids and isinstance(ids[0], list):
-            ids = [item for sub in ids for item in sub]
-        if docs and isinstance(docs[0], list):
-            docs = [item for sub in docs for item in sub]
-        if metas and isinstance(metas[0], list):
-            metas = [item for sub in metas for item in sub]
-        # Create synthetic ids if not available
-        if not ids or len(ids) != len(docs):
-            ids = [f"doc_{i}" for i in range(len(docs))]
-        chunks = [
-            {"id": i, "text": d or "", "metadata": m or {}}
-            for i, d, m in zip(ids, docs, metas, strict=False)
+
+        return [
+            {"id": f"doc_{i}", "text": d or "", "metadata": m or {}}
+            for i, (d, m) in enumerate(zip(docs, metas, strict=False))
         ]
-        if chunks:
-            return chunks
     except Exception:
-        pass
-    # Fallback: page through results
-    chunks = []
-    page = 0
-    page_size = 100
-    while True:
-        try:
-            raw = collection.get(
-                include=["documents", "metadatas"], limit=page_size, offset=page * page_size
-            )
-            ids = []
-            docs = raw.get("documents", []) or []
-            metas = raw.get("metadatas", []) or []
-            if not ids:
-                # synth ids if none provided
-                ids = [f"doc_{page*page_size + i}" for i in range(len(docs))]
-            chunks.extend(
-                [
-                    {"id": i, "text": d or "", "metadata": m or {}}
-                    for i, d, m in zip(ids, docs, metas, strict=False)
-                ]
-            )
-            if len(docs) < page_size:
-                break
-            page += 1
-        except Exception:
-            break
-    return chunks
+        return []
 
 
 # Create the graph instance
-graph = create_graph()
+graph: "StateGraph" = create_graph()
 
 
 if __name__ == "__main__":
+    import argparse
+
     parser = argparse.ArgumentParser(description="Run multi-agent risk reporter pipeline")
     parser.add_argument("--vectorstore-dir", default=os.getenv("VECTORSTORE_DIR", ".vectorstore"))
     parser.add_argument("--output-file", default="")
     parser.add_argument("--project-context", default="QBR preparation report")
     args = parser.parse_args()
 
-    # Load config once
+    # Load config for retrieval settings
     config = get_config()
 
     # Primary path: use HybridRetriever to select Top-K chunks
     chunks = []
     selected_via = "retrieval"
     try:
-        # Import locally to avoid heavy deps during CI smoke (when graph is only imported)
-        from src.retrieval.retriever import create_retriever  # type: ignore
+        # Import locally to avoid heavy deps during CI smoke
+        from src.retrieval.retriever import create_retriever
 
         retriever = create_retriever(
             vectorstore_dir=args.vectorstore_dir,
@@ -120,7 +84,7 @@ if __name__ == "__main__":
             prefilter_keywords=config.retrieval.prefilter_keywords,
         )
 
-        # Build a deterministic aggregate query from project context and config keywords
+        # Build query from project context and config keywords
         keywords = list(
             dict.fromkeys(
                 (config.flags.erb.get("critical_terms") or [])
@@ -135,58 +99,33 @@ if __name__ == "__main__":
             chunks = topk
         else:
             selected_via = "full_dataset"
-    except Exception:
-        # On any retriever error, fall back to full dataset
+    except Exception as e:
+        logger.warning(f"Retrieval failed, falling back to full dataset: {e}")
         selected_via = "full_dataset"
         chunks = []
 
-    # Fallback: load full dataset from Chroma if Top-K unavailable
+    # Fallback: load full dataset if retrieval unavailable
     if not chunks:
         try:
-            chunks = _load_all_chunks_from_chroma(args.vectorstore_dir)
-        except Exception:
+            chunks = _load_chunks_from_chroma(args.vectorstore_dir)
+        except Exception as e:
+            logger.warning(f"Chroma loading failed: {e}")
             chunks = []
 
-    # Debug: write initial chunks info (optional)
-    if getattr(config, "debug_logs", False):
-        try:
-            report_dir = getattr(config, "report_dir", "report")
-            os.makedirs(report_dir, exist_ok=True)
-            with open(
-                os.path.join(report_dir, "graph_initial_chunks.json"), "w", encoding="utf-8"
-            ) as f:
-                import json as _json
+        # Final fallback to JSON
+        if not chunks:
+            try:
+                import json
 
-                _json.dump(
-                    {
-                        "total_chunks": len(chunks) if isinstance(chunks, list) else 0,
-                        "sample_ids": [
-                            ch.get("id") for ch in (chunks[:5] if isinstance(chunks, list) else [])
-                        ],
-                        "selected_via": selected_via,
-                    },
-                    f,
-                    ensure_ascii=False,
-                    indent=2,
-                )
-        except Exception:
-            pass
+                with open("data/clean/chunks.json", encoding="utf-8") as f:
+                    chunks = json.load(f)
+            except Exception as e:
+                logger.error(f"All chunk loading methods failed: {e}")
+                chunks = []
 
-    # Fallback: if ChromaDB returned no chunks, try loading from data/clean/chunks.json
-    if not chunks:
-        try:
-            clean_dir = os.getenv("DATA_CLEAN", config.data_clean)
-            chunks_file = os.path.join(clean_dir, "chunks.json")
-            if os.path.exists(chunks_file):
-                import json as _json
-
-                with open(chunks_file, encoding="utf-8") as f:
-                    chunks = _json.load(f)
-        except Exception:
-            chunks = []
+    logger.info(f"Selected {len(chunks)} chunks via {selected_via}")
 
     initial_state = {
-        "messages": [],
         "chunks": chunks,
         "project_context": args.project_context,
         "candidates": [],
@@ -195,12 +134,12 @@ if __name__ == "__main__":
     }
 
     result = graph.invoke(initial_state)
-
     report_text = result.get("report", "")
+
     if args.output_file:
         os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
         with open(args.output_file, "w", encoding="utf-8") as f:
-            f.write(report_text or "")
+            f.write(report_text)
         print(f"Report written to {args.output_file}")
     else:
         print(report_text)
