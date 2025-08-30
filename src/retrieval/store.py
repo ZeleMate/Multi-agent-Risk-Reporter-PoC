@@ -45,11 +45,15 @@ class VectorStore:
                 model_name = "Qwen/Qwen3-Embedding-0.6B"
 
             self.tokenizer = AutoTokenizer.from_pretrained(
-                model_name, trust_remote_code=False, revision="main"
-            )  # noqa: S603
+                model_name,
+                trust_remote_code=False,
+                revision="c54f2e6e80b2d7b7de06f51cec4959f6b3e03418",
+            )
             self.embedding_model = AutoModel.from_pretrained(
-                model_name, trust_remote_code=False, revision="main"
-            )  # noqa: S603
+                model_name,
+                trust_remote_code=False,
+                revision="c54f2e6e80b2d7b7de06f51cec4959f6b3e03418",
+            )
             self.embedding_model.eval()
 
             # GPU/MPS support
