@@ -118,16 +118,12 @@ verified:
 class TestComposerAgent:
     """Test critical composer agent functionality."""
 
-    @patch("src.agents.composer_agent.get_config")
+    @patch("src.services.config.get_config")
     @patch("src.agents.composer_agent.ChatOpenAI")
     @patch("src.agents.composer_agent.get_composer_prompt")
     @patch("src.agents.composer_agent.get_composer_system_prompt")
-    @patch("src.agents.composer_agent.get_composer_report_templates")
-    @patch("src.agents.composer_agent.get_composer_formatting_rules")
     def test_composer_agent_success(
         self,
-        mock_formatting_rules,
-        mock_templates,
         mock_system_prompt,
         mock_get_prompt,
         mock_chat_openai,
@@ -137,8 +133,6 @@ class TestComposerAgent:
         # Setup mocks
         mock_system_prompt.return_value = "System prompt"
         mock_get_prompt.return_value = "Test prompt"
-        mock_templates.return_value = {"executive": "Template"}
-        mock_formatting_rules.return_value = {"rule1": "Description"}
 
         # Setup mock config
         from src.services.config import (
@@ -193,15 +187,12 @@ class TestGraph:
         # Verify graph has the expected nodes
         assert graph is not None
 
+    @patch("src.services.config.get_config")
     @patch("src.agents.composer_agent.ChatOpenAI")
     @patch("src.agents.composer_agent.get_composer_prompt")
     @patch("src.agents.composer_agent.get_composer_system_prompt")
-    @patch("src.agents.composer_agent.get_composer_report_templates")
-    @patch("src.agents.composer_agent.get_composer_formatting_rules")
     def test_composer_agent_model_selection(
         self,
-        mock_formatting_rules,
-        mock_templates,
         mock_system_prompt,
         mock_get_prompt,
         mock_chat_openai,
@@ -211,8 +202,6 @@ class TestGraph:
         # Setup mocks
         mock_system_prompt.return_value = "System prompt"
         mock_get_prompt.return_value = "Test prompt"
-        mock_templates.return_value = {"executive": "Template"}
-        mock_formatting_rules.return_value = {"rule1": "Description"}
 
         mock_response = Mock()
         mock_response.content = "# Test Report\nContent here"
@@ -242,21 +231,17 @@ class TestGraph:
         assert "report" in result
         assert result["report"] == "# Test Report\nContent here"
 
-        # Verify alternative model was used
+        # Verify primary model was used
         mock_chat_openai.assert_called_once()
         call_args = mock_chat_openai.call_args
-        assert call_args.kwargs["model"] == "gpt-5"
+        assert call_args.kwargs["model"] == "gpt-5-mini"
 
-    @patch("src.agents.composer_agent.get_config")
+    @patch("src.services.config.get_config")
     @patch("src.agents.composer_agent.ChatOpenAI")
     @patch("src.agents.composer_agent.get_composer_prompt")
     @patch("src.agents.composer_agent.get_composer_system_prompt")
-    @patch("src.agents.composer_agent.get_composer_report_templates")
-    @patch("src.agents.composer_agent.get_composer_formatting_rules")
     def test_composer_agent_primary_model_selection(
         self,
-        mock_formatting_rules,
-        mock_templates,
         mock_system_prompt,
         mock_get_prompt,
         mock_chat_openai,
@@ -266,8 +251,6 @@ class TestGraph:
         # Setup mocks
         mock_system_prompt.return_value = "System prompt"
         mock_get_prompt.return_value = "Test prompt"
-        mock_templates.return_value = {"executive": "Template"}
-        mock_formatting_rules.return_value = {"rule1": "Description"}
 
         # Setup mock config
         from src.services.config import (
