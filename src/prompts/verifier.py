@@ -9,21 +9,12 @@ from ..types import FlagItem
 
 
 def _escape_braces(text: str) -> str:
+    """Escape braces in text for safe string formatting."""
     return text.replace("{", "{{").replace("}", "}}")
 
 
 def get_verifier_prompt(candidates: list[FlagItem], full_evidence: list[dict[str, Any]]) -> str:
-    """
-    Generate verifier prompt for evidence validation - PORTFOLIO HEALTH FOCUS.
-
-    Args:
-        candidates: List of candidate risks from analyzer
-        full_evidence: Full evidence chunks for validation
-
-    Returns:
-        Formatted prompt for verifier agent
-    """
-    # Format candidates with enhanced detail
+    """Get the verifier prompt for verifier agent."""
     candidates_text = ""
     for i, candidate in enumerate(candidates, 1):
         candidates_text += f"""
@@ -45,7 +36,6 @@ EVIDENCE CITATIONS:
 ---
 """
 
-    # Format full evidence with comprehensive detail (list input)
     evidence_text = ""
     for idx, chunk in enumerate(full_evidence, 1):
         metadata = chunk.get("metadata", {})
@@ -81,10 +71,10 @@ You are validating risks for a **Director of Engineering** preparing for **Quart
 
 #### **1. Evidence Sufficiency Test**
 **REQUIRED:**
-- **Direct Evidence**: Content must explicitly support the claim (not just imply)
-- **Citation Accuracy**: File:line references must be precise and verifiable
-- **Content Relevance**: Evidence must directly relate to the risk described
-- **Context Preservation**: Email context must support the interpretation
+- **Direct or Strongly Implied Evidence**: Content should explicitly support the claim, but strong implication within the same chunk/thread is acceptable. Use lower confidence (mid/low) when inference is required.
+- **Citation Accuracy**: File:line references should be precise where possible, or an approximate range within the chunk metadata is acceptable when exact lines are unclear.
+- **Content Relevance**: Evidence must reasonably relate to the risk described; prefer confidence downgrade over rejection for borderline cases.
+- **Context Preservation**: Email context should not contradict the interpretation.
 
 **REJECT ONLY IF:**
 - Evidence contradicts the claim or shows resolution
@@ -137,17 +127,18 @@ For each candidate risk, verify:
 - If evidence is distributed across multiple emails in the same thread but clearly points to the same unresolved ask/blocker, classify as VERIFIED with confidence="mid" and consolidate citations.
 - If exact file:line is uncertain but the provided chunk clearly contains the relevant text, provide the closest line range from the chunk metadata (approximate) and include up to two exact quotes.
 - Prefer downgrading confidence (high → mid → low) over rejecting plausible, evidence-supported items. Only reject when evidence contradicts the claim or shows resolution.
+- If risk signals (e.g., blocked, waiting, urgent, missing, unclear) appear in the cited chunk, include the item with confidence="low" rather than rejecting, provided at least one citation is present.
 
 ## OUTPUT SPECIFICATIONS
 
-Return ONLY plain YAML (no code fences) with validated results:
+Return ONLY plain YAML (no code fences) with validated results. Use proper YAML quoting for strings containing special characters:
 
 verified:
-  - label: uhpai  # "erb", "uhpai", or "none"
-    title: Critical path blocked by missing API specs
-    reason: Development team cannot proceed with user authentication module due to missing API documentation. Email from 2025-01-15 explicitly states: 'We cannot start development until we receive the API specs.' No response received after 12 days.
+  - label: uhpai  # or erb; use none only when evidence contradicts the claim
+    title: "Critical path blocked by missing API specs"
+    reason: "Development team cannot proceed with user authentication module due to missing API documentation. Email from 2025-01-15 explicitly states: 'We cannot start development until we receive the API specs.' No response received after 12 days."
     owner_hint: BA
-    next_step: Provide complete API specs within 24 hours
+    next_step: "Provide complete API specs within 24 hours"
     evidence:
       - file: data/raw/Project_Phoenix/email1.txt
         lines: "15-22"
@@ -155,21 +146,12 @@ verified:
     timestamp: "2025-01-15T10:30:00"
     confidence: high
     score: 4.7
-    validation_notes: Evidence directly supports claim. No resolution visible in thread.
-    validation_status: VERIFIED
-    rejection_reason: null
-  - label: none
-    title: Claim rejected - insufficient evidence
-    reason: Original claim about SSO complexity not supported by evidence
-    validation_notes: Email mentions SSO as 'nice to have' but also states 'we can remove it from scope'. No blocking issue identified.
-    validation_status: REJECTED
-    rejection_reason: Evidence shows issue is resolved or non-blocking
-summary:
-  total_candidates: 3
-  verified_count: 1
-  rejected_count: 2
-  merged_count: 0
-  validation_timestamp: "2025-01-27T10:30:00"
+    validation_notes: "Evidence directly supports claim. No resolution visible in thread."
+  # Optional: if an item must be rejected, include a minimal rationale
+  # - label: none
+  #   title: "Claim rejected - insufficient evidence"
+  #   reason: "Claim not supported by cited evidence"
+  #   validation_notes: "No direct evidence in cited chunks"
 
 ## CANDIDATES TO VERIFY
 {candidates_text}
