@@ -125,6 +125,18 @@ if __name__ == "__main__":
 
     logger.info(f"Selected {len(chunks)} chunks via {selected_via}")
 
+    # Optional debug dump of initial chunks selection
+    try:
+        cfg = get_config()
+        if getattr(cfg, "debug_logs", False):
+            import json
+            os.makedirs(cfg.report_dir, exist_ok=True)
+            debug_path = os.path.join(cfg.report_dir, "graph_initial_chunks.json")
+            with open(debug_path, "w", encoding="utf-8") as f:
+                json.dump({"selected_via": selected_via, "chunks": chunks}, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.warning(f"Failed to write initial chunks debug file: {e}")
+
     initial_state = {
         "chunks": chunks,
         "project_context": args.project_context,
@@ -135,6 +147,23 @@ if __name__ == "__main__":
 
     result = graph.invoke(initial_state)
     report_text = result.get("report", "")
+
+    # Optional debug summary of pipeline state
+    try:
+        cfg = get_config()
+        if getattr(cfg, "debug_logs", False):
+            import json
+            os.makedirs(cfg.report_dir, exist_ok=True)
+            summary = {
+                "selected_via": selected_via,
+                "num_chunks": len(chunks),
+                "num_candidates": len(result.get("candidates", [])),
+                "num_verified": len(result.get("verified", [])),
+            }
+            with open(os.path.join(cfg.report_dir, "chunks_debug.json"), "w", encoding="utf-8") as f:
+                json.dump(summary, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.warning(f"Failed to write pipeline debug summary: {e}")
 
     if args.output_file:
         os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
