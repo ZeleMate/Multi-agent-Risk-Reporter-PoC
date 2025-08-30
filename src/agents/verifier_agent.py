@@ -23,6 +23,18 @@ def verifier_agent(state: OverallState) -> VerifierResponse:
     prompt = get_verifier_prompt(state.get("candidates", []), state.get("chunks", []))
     system_prompt = get_verifier_system_prompt()
 
+    # Optional debug: persist verifier prompts
+    try:
+        if getattr(config, "debug_logs", False):
+            import os
+            os.makedirs(config.report_dir, exist_ok=True)
+            with open(os.path.join(config.report_dir, "verifier_system_prompt.txt"), "w", encoding="utf-8") as f:
+                f.write(system_prompt)
+            with open(os.path.join(config.report_dir, "verifier_prompt.txt"), "w", encoding="utf-8") as f:
+                f.write(prompt)
+    except Exception as e:
+        logger.warning(f"Failed to write verifier debug prompts: {e}")
+
     messages = [
         SystemMessage(content=system_prompt),
         HumanMessage(content=prompt),
