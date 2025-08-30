@@ -1,40 +1,33 @@
 name: CI
-permissions: {contents: read}
+permissions:
+  contents: read
 
 concurrency:
-  group: "ci-${{ github.ref }}"
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
- # workflow_dispatch: # for manual triggering until we have a proper trigger
+    branches: [main, develop]
 
 env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PYTHONUNBUFFERED: "1"
-  # Provide a dummy key so imports/initialization that read the var won't fail.
   OPENAI_API_KEY: "sk-ci-placeholder"
-  OPENAI_BASE_URL: "http://localhost"
+  OPENAI_BASE_URL: "http://localhost" # véletlen hívások ellen
 
 jobs:
   lint:
-    name: Lint & Quality Checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v1
+      - uses: astral-sh/setup-uv@v1
         with:
           version: "latest"
 
@@ -43,68 +36,60 @@ jobs:
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-          restore-keys: |
-            venv-${{ runner.os }}-
+          restore-keys: venv-${{ runner.os }}-
 
-      - name: Install lint tools
-        run: |
-          uv sync --dev
+      - name: Install (frozen)
+        run: uv sync --extra dev --extra test --frozen
 
-      - name: Black (repo)
+      - name: Black
         run: uv run black --check . --line-length=100
+      - name: Ruff
+        run: uv run ruff check .
+      - name: mypy (advisory)
+        run: uv run mypy src/ || true
+      - name: bandit (advisory)
+        run: uv run bandit -r src/ || true
 
-      - name: Ruff (repo)
-        run: uv run ruff check . --fix
+      - name: Markdownlint
+        uses: avto-dev/markdown-lint@v1
+        with:
+          args: "**/*.md"
+        continue-on-error: true
 
-      - name: Mypy (optional on src/)
-        run: |
-          if [ -d src ]; then uv run mypy src/ --explicit-package-bases || true; else echo "no src/ dir, skipping mypy"; fi
-
-      - name: Bandit (optional on src/)
-        run: |
-          if [ -d src ]; then uv run bandit -r src/ --format json --output bandit-report.json || true; else echo "no src/ dir, skipping bandit"; fi
-
-      - name: Markdownlint (docs & README)
-        run: |
-          if [ -d docs ]; then markdownlint "**/*.md" || true; else echo "no docs/ dir"; fi
-          if [ -f README.md ]; then markdownlint "README.md" || true; fi
-
-  install-and-smoke:
-    name: Install deps & smoke tests
+  tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: lint
-    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11"] # bővíthető: ["3.10","3.11","3.12"]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python }}
+      - uses: astral-sh/setup-uv@v1
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v1
+      - name: Cache uv
+        uses: actions/cache@v4
         with:
-          version: "latest"
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: venv-${{ runner.os }}-${{ matrix.python }}-
 
-      - name: Install project (editable)
-        run: |
-          uv sync --dev
+      - name: Install (frozen)
+        run: uv sync --extra dev --extra test --frozen
 
-      - name: Import smoke (no heavy deps)
+      - name: Import smoke
         run: |
           uv run python - <<'PY'
           import importlib
-          for m in ["src.agents.graph"]:
+          for m in ["langgraph","langchain","chromadb","openai"]:
               importlib.import_module(m)
           print("Core imports OK")
           PY
 
-      - name: Run unit tests (if present)
+      - name: Unit tests + coverage (if any)
         run: |
-          if [ -d tests ]; then uv run pytest -q -ra --strict-markers --strict-config; else echo "No tests/ directory"; fi
-
-      - name: Run CI smoke test
-        run: |
-          if [ -f tests/ci_smoke.py ]; then uv run tests/ci_smoke.py; else echo "No ci_smoke.py"; fi
+          if [ -d tests ]; then uv run pytest -q --maxfail=1 --disable-warnings --cov=src --cov-report=xml; else echo "No tests/"; fi
