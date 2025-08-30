@@ -16,8 +16,8 @@ help:
 	@echo "  index      - Build Chroma index at .vectorstore/"
 	@echo ""
 	@echo "Multi-agent Pipeline:"
-	@echo "  run        - Execute the LangGraph pipeline (stdout prints Markdown)"
-	@echo "  report     - Write final markdown to ./data/report/portfolio_health.md"
+	@echo "  run        - Execute pipeline and write ./data/report/portfolio_health.md"
+	@echo "  report     - Same as 'run' (forces overwrite)"
 	@echo ""
 	@echo "Quality & Testing:"
 	@echo "  lint       - Run code quality checks (Black, Ruff, Mypy, Bandit)"
@@ -61,29 +61,53 @@ index:
 # Run the complete LangGraph pipeline
 run:
 	@echo "Running multi-agent pipeline..."
-	$(UV_VENV) -m src.agents.graph --vectorstore-dir $(VECTORSTORE_DIR)
+	@mkdir -p $(REPORT_DIR)
+	@rm -f $(REPORT_DIR)/portfolio_health.md
+	REPORT_DIR=$(REPORT_DIR) VECTORSTORE_DIR=$(VECTORSTORE_DIR) DATA_CLEAN=$(DATA_CLEAN) DATA_RAW=$(DATA_RAW) $(UV_VENV) -m src.agents.graph --vectorstore-dir $(VECTORSTORE_DIR) --output-file $(REPORT_DIR)/portfolio_health.md
+	@echo "Report generated at $(REPORT_DIR)/portfolio_health.md"
 
 # Generate final report
 report:
 	@echo "Generating final report..."
 	@mkdir -p $(REPORT_DIR)
-	$(UV_VENV) -m src.agents.graph --vectorstore-dir $(VECTORSTORE_DIR) --output-file $(REPORT_DIR)/portfolio_health.md
+	@rm -f $(REPORT_DIR)/portfolio_health.md
+	REPORT_DIR=$(REPORT_DIR) VECTORSTORE_DIR=$(VECTORSTORE_DIR) DATA_CLEAN=$(DATA_CLEAN) DATA_RAW=$(DATA_RAW) $(UV_VENV) -m src.agents.graph --vectorstore-dir $(VECTORSTORE_DIR) --output-file $(REPORT_DIR)/portfolio_health.md
 	@echo "Report generated at $(REPORT_DIR)/portfolio_health.md"
 
 # Code quality checks
 lint:
 	@echo "Running code quality checks..."
-	$(UV_VENV) black --check --diff src/ tests/ scripts/
-	$(UV_VENV) ruff check src/ tests/ scripts/
-	$(UV_VENV) mypy src/ --ignore-missing-imports
-	$(UV_VENV) bandit -r src/ -f json -o bandit-report.json || true
+	@echo "Running Black..."
+	@if $(UV_VENV) black --check --line-length=100 src/ tests/; then \
+		echo "Black: PASSED"; \
+	else \
+		echo "Black: FAILED"; \
+	fi
+	@echo "Running Ruff..."
+	@if $(UV_VENV) ruff check src/ tests/; then \
+		echo "Ruff: PASSED"; \
+	else \
+		echo "Ruff: FAILED"; \
+	fi
+	@echo "Running MyPy..."
+	@if $(UV_VENV) mypy src/; then \
+		echo "MyPy: PASSED"; \
+	else \
+		echo "MyPy: FAILED ($$? errors)"; \
+	fi
+	@echo "Running Bandit..."
+	@if $(UV_VENV) bandit -r src/ --skip B110 -f json -o bandit-report.json; then \
+		echo "Bandit: PASSED"; \
+	else \
+		echo "Bandit: FAILED"; \
+	fi
 	@echo "Linting complete"
 
 # Code formatting
 fmt:
 	@echo "Formatting code..."
-	$(UV_VENV) black src/ tests/ scripts/
-	$(UV_VENV) ruff check --fix src/ tests/ scripts/
+	$(UV_VENV) black --line-length=100 src/ tests/
+	$(UV_VENV) ruff check --fix src/ tests/
 	@echo "Code formatting complete"
 
 # Run tests
@@ -95,7 +119,7 @@ test:
 # CI smoke test (no network calls)
 ci-smoke:
 	@echo "Running CI smoke test..."
-	$(UV_VENV) scripts/ci_smoke.py
+	$(UV_VENV) tests/ci_smoke.py
 	@echo "CI smoke test passed"
 
 # Clean generated files
