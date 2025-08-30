@@ -42,10 +42,15 @@ def analyzer_agent(state: OverallState) -> AnalyzerResponse:
     try:
         if getattr(config, "debug_logs", False):
             import os
+
             os.makedirs(config.report_dir, exist_ok=True)
-            with open(os.path.join(config.report_dir, "analyzer_system_prompt.txt"), "w", encoding="utf-8") as f:
+            with open(
+                os.path.join(config.report_dir, "analyzer_system_prompt.txt"), "w", encoding="utf-8"
+            ) as f:
                 f.write(system_prompt)
-            with open(os.path.join(config.report_dir, "analyzer_prompt.txt"), "w", encoding="utf-8") as f:
+            with open(
+                os.path.join(config.report_dir, "analyzer_prompt.txt"), "w", encoding="utf-8"
+            ) as f:
                 f.write(prompt_text)
     except Exception as e:
         logger.warning(f"Failed to write analyzer debug prompts: {e}")

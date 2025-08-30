@@ -130,10 +130,16 @@ if __name__ == "__main__":
         cfg = get_config()
         if getattr(cfg, "debug_logs", False):
             import json
+
             os.makedirs(cfg.report_dir, exist_ok=True)
             debug_path = os.path.join(cfg.report_dir, "graph_initial_chunks.json")
             with open(debug_path, "w", encoding="utf-8") as f:
-                json.dump({"selected_via": selected_via, "chunks": chunks}, f, ensure_ascii=False, indent=2)
+                json.dump(
+                    {"selected_via": selected_via, "chunks": chunks},
+                    f,
+                    ensure_ascii=False,
+                    indent=2,
+                )
     except Exception as e:
         logger.warning(f"Failed to write initial chunks debug file: {e}")
 
@@ -153,6 +159,7 @@ if __name__ == "__main__":
         cfg = get_config()
         if getattr(cfg, "debug_logs", False):
             import json
+
             os.makedirs(cfg.report_dir, exist_ok=True)
             summary = {
                 "selected_via": selected_via,
@@ -160,7 +167,9 @@ if __name__ == "__main__":
                 "num_candidates": len(result.get("candidates", [])),
                 "num_verified": len(result.get("verified", [])),
             }
-            with open(os.path.join(cfg.report_dir, "chunks_debug.json"), "w", encoding="utf-8") as f:
+            with open(
+                os.path.join(cfg.report_dir, "chunks_debug.json"), "w", encoding="utf-8"
+            ) as f:
                 json.dump(summary, f, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.warning(f"Failed to write pipeline debug summary: {e}")
