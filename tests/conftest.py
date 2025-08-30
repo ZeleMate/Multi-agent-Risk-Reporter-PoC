@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from src.services.config import AppConfig
-from src.types import Chunk, ChunkMetadata, EmailData, ThreadData
+from src.types import Chunk, EmailData, ThreadData
 
 
 @pytest.fixture
@@ -82,60 +82,60 @@ def sample_chunks():
     chunk1 = Chunk(
         id="chunk_001",
         text="The application is completely blocked due to database connectivity issues. We cannot proceed with the deployment until this is resolved.",
-        metadata=ChunkMetadata(
-            file="./test_data/raw/email1.txt",
-            line_start=1,
-            line_end=5,
-            thread_id="thread_001",
-            total_emails=1,
-            participants=["john.doe@company.com"],
-            subject="Database connectivity issue",
-            canonical_subject="database connectivity issue",
-            start_date="2024-01-15T10:30:00",
-            end_date="2024-01-15T10:30:00",
-            chunk_size=150,
-            sentence_count=2,
-        ),
+        metadata={
+            "file": "./test_data/raw/email1.txt",
+            "line_start": 1,
+            "line_end": 5,
+            "thread_id": "thread_001",
+            "total_emails": 1,
+            "participants": ["john.doe@company.com"],
+            "subject": "Database connectivity issue",
+            "canonical_subject": "database connectivity issue",
+            "start_date": "2024-01-15T10:30:00",
+            "end_date": "2024-01-15T10:30:00",
+            "chunk_size": 150,
+            "sentence_count": 2,
+        },
     )
 
     # Chunk 2 - UHPAI type (Unresolved High-Priority Action Item)
     chunk2 = Chunk(
         id="chunk_002",
         text="The security vulnerability in the payment module needs immediate attention. This is a high priority item that has been unresolved for 5 days.",
-        metadata=ChunkMetadata(
-            file="./test_data/raw/email2.txt",
-            line_start=1,
-            line_end=4,
-            thread_id="thread_002",
-            total_emails=1,
-            participants=["jane.smith@company.com"],
-            subject="Security vulnerability - urgent",
-            canonical_subject="security vulnerability urgent",
-            start_date="2024-01-14T14:20:00",
-            end_date="2024-01-14T14:20:00",
-            chunk_size=120,
-            sentence_count=2,
-        ),
+        metadata={
+            "file": "./test_data/raw/email2.txt",
+            "line_start": 1,
+            "line_end": 4,
+            "thread_id": "thread_002",
+            "total_emails": 1,
+            "participants": ["jane.smith@company.com"],
+            "subject": "Security vulnerability - urgent",
+            "canonical_subject": "security vulnerability urgent",
+            "start_date": "2024-01-14T14:20:00",
+            "end_date": "2024-01-14T14:20:00",
+            "chunk_size": 120,
+            "sentence_count": 2,
+        },
     )
 
     # Chunk 3 - Neutral chunk (should not be flagged)
     chunk3 = Chunk(
         id="chunk_003",
         text="The team meeting is scheduled for tomorrow at 2 PM. We will discuss the project progress and next steps.",
-        metadata=ChunkMetadata(
-            file="./test_data/raw/email3.txt",
-            line_start=1,
-            line_end=3,
-            thread_id="thread_003",
-            total_emails=1,
-            participants=["manager@company.com"],
-            subject="Team meeting reminder",
-            canonical_subject="team meeting reminder",
-            start_date="2024-01-16T09:00:00",
-            end_date="2024-01-16T09:00:00",
-            chunk_size=80,
-            sentence_count=2,
-        ),
+        metadata={
+            "file": "./test_data/raw/email3.txt",
+            "line_start": 1,
+            "line_end": 3,
+            "thread_id": "thread_003",
+            "total_emails": 1,
+            "participants": ["manager@company.com"],
+            "subject": "Team meeting reminder",
+            "canonical_subject": "team meeting reminder",
+            "start_date": "2024-01-16T09:00:00",
+            "end_date": "2024-01-16T09:00:00",
+            "chunk_size": 80,
+            "sentence_count": 2,
+        },
     )
 
     chunks.extend([chunk1, chunk2, chunk3])

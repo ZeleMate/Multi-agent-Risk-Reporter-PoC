@@ -59,16 +59,18 @@ class TestVectorStore:
         # Same chunk should produce same hash
         assert hash1 == hash2
         assert isinstance(hash1, str)
-        assert len(hash1) == 64  # SHA-256 produces 64 character hex string
+        assert len(hash1) == 16  # SHA-256 truncated to 16 characters
 
-    def test_get_all_chunk_ids_empty_collection(self):
-        """Test getting chunk IDs from empty collection."""
+    def test_get_collection_info_empty_collection(self):
+        """Test getting collection info from empty collection."""
         store = VectorStore()
         store.collection = Mock()
-        store.collection.get.return_value = {"ids": []}
+        store.collection.count.return_value = 0
 
-        result = store.get_all_chunk_ids()
-        assert result == []
+        result = store.get_collection_info()
+        assert result["collection_name"] == "email_chunks"
+        assert result["total_chunks"] == 0
+        assert result["persist_directory"] == ".vectorstore"
 
 
 class TestHybridRetriever:
