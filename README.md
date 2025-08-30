@@ -63,6 +63,8 @@ DEBUG_LOGS=false
 
 Model/pipeline settings live under `configs/` and are loaded via `src/services/config.py`.
 
+When `DEBUG_LOGS=true`, the pipeline persists debug artifacts to `REPORT_DIR`. See the Output section below for details.
+
 ### Data Pipeline Commands (Advanced)
 - Ingestion (parallel parsing):
 ```bash
@@ -93,13 +95,20 @@ uv run python -m src.retrieval.store \
 
 ### Key Features
 - Evidence-first classification (file:line citations) with YAML agent contracts
-- Parallel ingestion and incremental indexing (hash-based upsert)
+- Incremental indexing (hash-based upsert)
 - Cost-aware retrieval (optional keyword prefilter + vector top_k)
 - Config-driven, debug artifacts toggle (`DEBUG_LOGS`)
 
 ### Output
 - Markdown report: `data/report/portfolio_health.md`
 
+Debug artifacts (only when `DEBUG_LOGS=true`):
+- `data/report/graph_initial_chunks.json` — selected chunks and selection method
+- `data/report/chunks_debug.json` — summary counts for chunks/candidates/verified
+- `data/report/analyzer_system_prompt.txt` — Analyzer system prompt
+- `data/report/analyzer_prompt.txt` — Analyzer user prompt
+- `data/report/verifier_system_prompt.txt` — Verifier system prompt
+- `data/report/verifier_prompt.txt` — Verifier user prompt
+
 ### Documentation
-- Operator/developer guide: `AGENTS.md`
 - Architectural rationale: `BLUEPRINT.md` (final authoritative blueprint)
