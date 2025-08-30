@@ -10,9 +10,11 @@ from src.types import ComposerResponse
 def composer_agent(state: OverallState) -> ComposerResponse:
     """Composer agent."""
     config = get_config()
+    # Always use alternative model for composer (gpt-5)
+    alt = config.alternative_model
     model = ChatOpenAI(
-        model=config.model.chat_model,
-        temperature=config.model.temperature,
+        model=alt.chat_model,
+        temperature=alt.temperature,
     )
     prompt = get_composer_prompt(state["verified"], state["project_context"])
     system_prompt = get_composer_system_prompt()
@@ -22,6 +24,6 @@ def composer_agent(state: OverallState) -> ComposerResponse:
 
     messages = [SystemMessage(content=full_prompt)]
     response_msg = model.invoke(messages)
-    response_text = getattr(response_msg, "content", response_msg)
+    response_text = str(getattr(response_msg, "content", response_msg))
 
     return ComposerResponse(report=response_text)
