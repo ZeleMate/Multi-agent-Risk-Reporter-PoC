@@ -1,3 +1,5 @@
+import logging
+
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
@@ -6,22 +8,21 @@ from src.prompts.verifier import get_verifier_prompt, get_verifier_system_prompt
 from src.services.config import get_config
 from src.types import VerifierResponse
 
+logger = logging.getLogger(__name__)
+
 
 def verifier_agent(state: OverallState) -> VerifierResponse:
     """Verifier agent."""
     config = get_config()
-    report_dir = getattr(config, "report_dir", "report")
-    model_config = config.model
     model = ChatOpenAI(
-        model=model_config.chat_model,
-        temperature=max(0.7, model_config.temperature),
+        model=config.model.chat_model,
+        temperature=config.model.temperature,
     )
 
-    # The full_evidence comes from the chunks field
+    # Generate prompt and get response
     prompt = get_verifier_prompt(state.get("candidates", []), state.get("chunks", []))
     system_prompt = get_verifier_system_prompt()
 
-    # Single system message with full instructions
     messages = [
         SystemMessage(content=system_prompt),
         HumanMessage(content=prompt),
@@ -30,14 +31,16 @@ def verifier_agent(state: OverallState) -> VerifierResponse:
     response_msg = model.invoke(messages)
     response_text = getattr(response_msg, "content", response_msg)
 
-    # Parse YAML
+    # Parse YAML response
     try:
         import yaml
 
         data = yaml.safe_load(response_text)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to parse YAML response: {e}, using raw text")
         data = response_text
 
+    # Extract verified items
     if isinstance(data, dict) and "verified" in data:
         verified = data["verified"]
     elif isinstance(data, list):
@@ -47,19 +50,4 @@ def verifier_agent(state: OverallState) -> VerifierResponse:
     else:
         verified = []
 
-    # Debug: save only when enabled
-    if getattr(config, "debug_logs", False):
-        try:
-            import json
-            import os
-
-            os.makedirs(report_dir, exist_ok=True)
-            with open(os.path.join(report_dir, "verified.json"), "w", encoding="utf-8") as f:
-                json.dump(
-                    {"count": len(verified), "items": verified}, f, ensure_ascii=False, indent=2
-                )
-        except Exception:
-            pass
-
-    # Return OverallState with the validated results
     return VerifierResponse(verified=verified)
