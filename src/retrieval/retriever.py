@@ -71,7 +71,7 @@ class HybridRetriever:
             # GPU/MPS support
             if torch.cuda.is_available():
                 self.embedding_model.cuda()
-            elif torch.backends.mps.is_available():
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 self.embedding_model.to("mps")
 
             self.collection = self.client.get_collection(name=self.collection_name)
@@ -84,6 +84,9 @@ class HybridRetriever:
     def keyword_prefilter(self, query: str) -> list[str]:
         """Perform keyword-based prefiltering."""
         try:
+            if self.collection is None:
+                logger.error("Collection not initialized. Call initialize() first.")
+                return []
             results = self.collection.get(include=["documents"])
             if not results["documents"]:
                 return []
@@ -111,19 +114,21 @@ class HybridRetriever:
 
     def generate_query_embedding(self, query: str) -> list[float]:
         try:
+            if self.embedding_model is None:
+                raise RuntimeError("Embedding model not initialized. Call initialize() first.")
             inputs = self.tokenizer(query, return_tensors="pt", truncation=True, max_length=512)
 
             # Move to device
             if torch.cuda.is_available():
                 inputs = {k: v.cuda() for k, v in inputs.items()}
-            elif torch.backends.mps.is_available():  # type: ignore[attr-defined]
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 inputs = {k: v.to("mps") for k, v in inputs.items()}
 
             with torch.no_grad():
                 outputs = self.embedding_model(**inputs)
                 embedding = outputs.last_hidden_state.mean(dim=1).squeeze().cpu().numpy()
 
-            return embedding.tolist()
+            return embedding.tolist()  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
