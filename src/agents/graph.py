@@ -14,7 +14,7 @@ from src.services.config import get_config
 logger = logging.getLogger(__name__)
 
 
-def create_graph() -> "StateGraph":
+def create_graph() -> Any:
     """Create the overall graph."""
     graph = StateGraph(OverallState)
 
@@ -27,9 +27,9 @@ def create_graph() -> "StateGraph":
     graph.add_edge("verifier", "composer")
     graph.add_edge("composer", END)
 
-    graph = graph.compile()
+    compiled = graph.compile()
 
-    return graph
+    return compiled
 
 
 def _load_chunks_from_chroma(vectorstore_dir: str) -> list[dict[str, Any]]:
@@ -54,8 +54,8 @@ def _load_chunks_from_chroma(vectorstore_dir: str) -> list[dict[str, Any]]:
         return []
 
 
-# Create the graph instance
-graph: "StateGraph" = create_graph()
+# Create the graph instance (compiled)
+graph = create_graph()
 
 
 if __name__ == "__main__":
