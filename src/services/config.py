@@ -58,7 +58,7 @@ class AlternativeModelConfig:
 class RetrievalConfig:
     """Configuration for retrieval system."""
 
-    top_k: int = 10
+    top_k: int = 15
     prefilter_keywords: list[str] = field(
         default_factory=lambda: [
             "blocker",
@@ -162,7 +162,7 @@ class AppConfig:
     # Debug
     debug_logs: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Load API key from environment."""
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
 
@@ -171,7 +171,7 @@ class ConfigManager:
     """Manages configuration loading and validation."""
 
     @staticmethod
-    def _filter_dataclass_kwargs(cls, data: dict[str, Any]) -> dict[str, Any]:
+    def _filter_dataclass_kwargs(cls: type, data: dict[str, Any]) -> dict[str, Any]:  # type: ignore[misc]
         """Filter incoming dict to only include kwargs that exist on the dataclass."""
         if not isinstance(data, dict):
             return {}
