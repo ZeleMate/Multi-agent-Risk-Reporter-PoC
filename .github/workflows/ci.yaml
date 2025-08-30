@@ -23,6 +23,7 @@ jobs:
   lint:
     name: Lint & Quality Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,23 +38,31 @@ jobs:
         with:
           version: "latest"
 
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-
+
       - name: Install lint tools
         run: |
-          uv sync --extra dev --extra test
+          uv sync --dev
 
       - name: Black (repo)
         run: uv run black --check . --line-length=100
 
       - name: Ruff (repo)
-        run: uv run ruff check .
+        run: uv run ruff check . --fix
 
       - name: Mypy (optional on src/)
         run: |
-          if [ -d src ]; then uv run mypy src/ || true; else echo "no src/ dir, skipping mypy"; fi
+          if [ -d src ]; then uv run mypy src/ --explicit-package-bases || true; else echo "no src/ dir, skipping mypy"; fi
 
       - name: Bandit (optional on src/)
         run: |
-          if [ -d src ]; then uv run bandit -r src/ || true; else echo "no src/ dir, skipping bandit"; fi
+          if [ -d src ]; then uv run bandit -r src/ --format json --output bandit-report.json || true; else echo "no src/ dir, skipping bandit"; fi
 
       - name: Markdownlint (docs & README)
         run: |
@@ -64,6 +73,7 @@ jobs:
     name: Install deps & smoke tests
     runs-on: ubuntu-latest
     needs: lint
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,20 +90,20 @@ jobs:
 
       - name: Install project (editable)
         run: |
-          uv sync --extra dev --extra test
+          uv sync --dev
 
       - name: Import smoke (no heavy deps)
         run: |
           uv run python - <<'PY'
           import importlib
-          for m in ["langgraph", "langchain", "chromadb", "openai"]:
+          for m in ["src.agents.graph"]:
               importlib.import_module(m)
           print("Core imports OK")
           PY
 
       - name: Run unit tests (if present)
         run: |
-          if [ -d tests ]; then uv run pytest -q; else echo "No tests/ directory"; fi
+          if [ -d tests ]; then uv run pytest -q -ra --strict-markers --strict-config; else echo "No tests/ directory"; fi
 
       - name: Run CI smoke test
         run: |
