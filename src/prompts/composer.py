@@ -18,15 +18,15 @@ def get_composer_prompt(verified_risks: list[FlagItem], project_context: str = "
     risks_text = ""
     for i, risk in enumerate(verified_risks, 1):
         label = risk.get("label", "none")
-        title = risk.get("title", "Unknown")
-        reason = risk.get("reason", "Unknown")
-        owner_hint = risk.get("owner_hint", "Unknown")
-        next_step = risk.get("next_step", "Unknown")
-        confidence = risk.get("confidence", "Unknown")
+        title = str(risk.get("title", "Unknown"))
+        reason = str(risk.get("reason", "Unknown"))
+        owner_hint = str(risk.get("owner_hint", "Unknown"))
+        next_step = str(risk.get("next_step", "Unknown"))
+        confidence = str(risk.get("confidence", "Unknown"))
         score = risk.get("score", 0.0)
-        thread_id = risk.get("thread_id", "Unknown")
+        thread_id = str(risk.get("thread_id", "Unknown"))
         evidence = risk.get("evidence", [])
-        validation_notes = risk.get("validation_notes", "None")
+        validation_notes = str(risk.get("validation_notes", "None"))
 
         risks_text += f"""
 RISK {i}:
