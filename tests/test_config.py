@@ -103,6 +103,6 @@ report:
         assert config.model.chat_model == "gpt-5-mini"
         assert config.embedding.model_name == "Qwen/Qwen3-Embedding-0.6B"
         assert config.agent_models.analyzer == "primary_model"
-        assert config.retrieval.top_k == 10
+        assert config.retrieval.top_k == 15
         assert config.chunking.chunk_size == 1000
         assert "blocker" in config.retrieval.prefilter_keywords
