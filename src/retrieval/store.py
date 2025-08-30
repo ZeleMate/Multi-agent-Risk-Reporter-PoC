@@ -102,10 +102,14 @@ class VectorStore:
                 # Move to device
                 if torch.cuda.is_available():
                     inputs = {k: v.cuda() for k, v in inputs.items()}
-                elif torch.backends.mps.is_available():  # type: ignore[attr-defined]
+                elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                     inputs = {k: v.to("mps") for k, v in inputs.items()}
 
                 with torch.no_grad():
+                    if self.embedding_model is None:
+                        raise RuntimeError(
+                            "Embedding model not initialized. Call initialize() first."
+                        )
                     outputs = self.embedding_model(**inputs)
                     batch_embeddings = outputs.last_hidden_state.mean(dim=1).cpu().numpy()
 
