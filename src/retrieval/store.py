@@ -77,8 +77,12 @@ class VectorStore:
         try:
             with open(chunks_file, encoding="utf-8") as f:
                 chunks = json.load(f)
-            logger.info(f"Loaded {len(chunks)} chunks from {chunks_file}")
-            return chunks
+            if isinstance(chunks, list):
+                logger.info(f"Loaded {len(chunks)} chunks from {chunks_file}")
+                return chunks
+            else:
+                logger.warning(f"Loaded data is not a list: {type(chunks)}")
+                return []
         except Exception as e:
             logger.error(f"Failed to load chunks from {chunks_file}: {e}")
             raise
@@ -98,7 +102,7 @@ class VectorStore:
                 # Move to device
                 if torch.cuda.is_available():
                     inputs = {k: v.cuda() for k, v in inputs.items()}
-                elif torch.backends.mps.is_available():
+                elif torch.backends.mps.is_available():  # type: ignore[attr-defined]
                     inputs = {k: v.to("mps") for k, v in inputs.items()}
 
                 with torch.no_grad():
@@ -137,6 +141,9 @@ class VectorStore:
         embeddings: list[list[float]],
     ) -> None:
         """Upsert batch into collection."""
+        if self.collection is None:
+            raise RuntimeError("Collection not initialized. Call initialize() first.")
+
         try:
             if hasattr(self.collection, "upsert"):
                 self.collection.upsert(
@@ -177,6 +184,13 @@ class VectorStore:
             raise
 
     def get_collection_info(self) -> dict[str, Any]:
+        if self.collection is None:
+            return {
+                "collection_name": self.collection_name,
+                "total_chunks": 0,
+                "persist_directory": self.persist_directory,
+            }
+
         try:
             count = self.collection.count()
             return {

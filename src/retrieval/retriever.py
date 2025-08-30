@@ -116,7 +116,7 @@ class HybridRetriever:
             # Move to device
             if torch.cuda.is_available():
                 inputs = {k: v.cuda() for k, v in inputs.items()}
-            elif torch.backends.mps.is_available():
+            elif torch.backends.mps.is_available():  # type: ignore[attr-defined]
                 inputs = {k: v.to("mps") for k, v in inputs.items()}
 
             with torch.no_grad():
@@ -132,6 +132,10 @@ class HybridRetriever:
     def semantic_search(
         self, query: str, candidate_ids: list[str] | None = None, top_k: int = 10
     ) -> list[dict[str, Any]]:
+        if self.collection is None:
+            logger.error("Collection not initialized. Call initialize() first.")
+            return []
+
         try:
             query_embedding = self.generate_query_embedding(query)
 
@@ -207,6 +211,12 @@ class HybridRetriever:
             return []
 
     def get_collection_stats(self) -> dict[str, Any]:
+        if self.collection is None:
+            return {
+                "collection_name": self.collection_name,
+                "total_chunks": 0,
+            }
+
         try:
             return {
                 "collection_name": self.collection_name,
