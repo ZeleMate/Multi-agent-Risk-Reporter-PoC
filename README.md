@@ -44,8 +44,8 @@ make run          # Run Analyzer → Verifier → Composer
 make report       # Write data/report/portfolio_health.md
 
 # Development
-make lint         # Code quality checks (Ruff)
-make fmt          # Format code (Black)
+make lint         # Code quality checks (Black, Ruff, MyPy, Bandit)
+make fmt          # Format code (Black & Ruff)
 make test         # Run tests (pytest)
 ```
 
@@ -66,24 +66,17 @@ Model/pipeline settings live under `configs/` and are loaded via `src/services/c
 When `DEBUG_LOGS=true`, the pipeline persists debug artifacts to `REPORT_DIR`. See the Output section below for details.
 
 ### Data Pipeline Commands (Advanced)
-- Ingestion (parallel parsing):
+- Ingestion:
 ```bash
-uv run python -m src.ingestion.parser \
-  --input-dir ./data/raw \
-  --output-dir ./data/clean \
-  --workers 8
+uv run python -m src.ingestion.parser
+# Reads DATA_RAW and DATA_CLEAN from environment
 ```
 
-- Indexing (incremental upsert, micro-batching):
+- Indexing:
 ```bash
 uv run python -m src.retrieval.store \
   --input-dir ./data/clean \
-  --vectorstore-dir .vectorstore \
-  --batch-size 200 \
-  --embed-batch-size 64           # per-forward embedding mini-batch
-# Optional flags:
-#   --no-incremental               # force full re-index
-#   --prune-missing                # delete entries missing from chunks.json
+  --vectorstore-dir .vectorstore
 ```
 
 ### Tech Stack
@@ -91,7 +84,7 @@ uv run python -m src.retrieval.store \
 - LLMs: `gpt-5-mini` (analysis/verification), `gpt-5` (composition)
 - Embeddings & Vector Store: Qwen3 Embedding + ChromaDB (local)
 - Ingestion: deterministic parsing, PII redaction, thread-aware chunking
-- Tooling: uv, Black, Ruff, pytest
+- Tooling: uv, Black, Ruff, MyPy, Bandit, pytest
 
 ### Key Features
 - Evidence-first classification (file:line citations) with YAML agent contracts
