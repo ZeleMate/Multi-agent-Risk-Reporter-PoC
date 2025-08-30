@@ -1,7 +1,6 @@
 # Multi-agent Risk Reporter PoC Makefile
-# Based on AGENTS.md specifications
 
-.PHONY: help setup ingest index run report lint fmt test ci-smoke clean
+.PHONY: help setup ingest index run report lint fmt test ci ci-smoke clean
 
 # Default target
 help:
@@ -23,6 +22,7 @@ help:
 	@echo "  lint       - Run code quality checks (Black, Ruff, Mypy, Bandit)"
 	@echo "  fmt        - Format code (Black & Ruff)"
 	@echo "  test       - Run pytest"
+	@echo "  ci         - Run complete CI pipeline simulation (lint + smoke tests)"
 	@echo "  ci-smoke   - Compile the graph, no LLM/network requests"
 
 # Environment variables
@@ -115,6 +115,24 @@ test:
 	@echo "Running tests..."
 	$(UV_VENV) pytest tests/ -v --tb=short
 	@echo "Tests complete"
+
+# Complete CI pipeline simulation
+ci:
+	@echo "=========================================="
+	@echo "SIMULATING COMPLETE CI PIPELINE"
+	@echo "=========================================="
+	@echo ""
+	@echo "Phase 1: Lint & Quality Checks"
+	@echo "=================================="
+	$(MAKE) lint
+	@echo ""
+	@echo "Phase 2: Install & Smoke Tests"
+	@echo "=================================="
+	$(MAKE) ci-smoke
+	@echo ""
+	@echo "=========================================="
+	@echo "CI PIPELINE COMPLETED SUCCESSFULLY!"
+	@echo "=========================================="
 
 # CI smoke test (no network calls)
 ci-smoke:
