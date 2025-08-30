@@ -171,7 +171,7 @@ class ConfigManager:
     """Manages configuration loading and validation."""
 
     @staticmethod
-    def _filter_dataclass_kwargs(cls: type, data: dict[str, Any]) -> dict[str, Any]:  # type: ignore[misc]
+    def _filter_dataclass_kwargs(cls: type, data: dict[str, Any]) -> dict[str, Any]:
         """Filter incoming dict to only include kwargs that exist on the dataclass."""
         if not isinstance(data, dict):
             return {}
@@ -183,7 +183,8 @@ class ConfigManager:
         """Load configuration from YAML file."""
         try:
             with open(yaml_path, encoding="utf-8") as f:
-                return yaml.safe_load(f)
+                result = yaml.safe_load(f)
+                return result if isinstance(result, dict) else {}
         except FileNotFoundError:
             logger.warning(f"Configuration file {yaml_path} not found, using defaults")
             return {}
