@@ -38,6 +38,17 @@ def analyzer_agent(state: OverallState) -> AnalyzerResponse:
 
     # Generate prompt and get response
     prompt_text = get_analyzer_prompt(chunks, state["project_context"], config)
+    # Optional debug: persist analyzer prompts
+    try:
+        if getattr(config, "debug_logs", False):
+            import os
+            os.makedirs(config.report_dir, exist_ok=True)
+            with open(os.path.join(config.report_dir, "analyzer_system_prompt.txt"), "w", encoding="utf-8") as f:
+                f.write(system_prompt)
+            with open(os.path.join(config.report_dir, "analyzer_prompt.txt"), "w", encoding="utf-8") as f:
+                f.write(prompt_text)
+    except Exception as e:
+        logger.warning(f"Failed to write analyzer debug prompts: {e}")
     messages = [
         SystemMessage(content=system_prompt),
         HumanMessage(content=prompt_text),
