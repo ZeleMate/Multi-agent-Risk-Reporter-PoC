@@ -231,10 +231,10 @@ class TestGraph:
         assert "report" in result
         assert result["report"] == "# Test Report\nContent here"
 
-        # Verify primary model was used
+        # Verify alternative model was used
         mock_chat_openai.assert_called_once()
         call_args = mock_chat_openai.call_args
-        assert call_args.kwargs["model"] == "gpt-5-mini"
+        assert call_args.kwargs["model"] == "gpt-5"
 
     @patch("src.services.config.get_config")
     @patch("src.agents.composer_agent.ChatOpenAI")
@@ -281,7 +281,7 @@ class TestGraph:
 
         composer_agent(state)
 
-        # Verify primary model was used
+        # Verify alternative model was used (composer forces alternative)
         mock_chat_openai.assert_called_once()
         call_args = mock_chat_openai.call_args
-        assert call_args.kwargs["model"] == "gpt-5-mini"
+        assert call_args.kwargs["model"] == "gpt-5"
