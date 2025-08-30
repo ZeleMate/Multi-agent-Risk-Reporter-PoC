@@ -131,20 +131,25 @@ For each candidate risk, verify:
 
 ## OUTPUT SPECIFICATIONS
 
-Return ONLY plain YAML (no code fences) with validated results. Use proper YAML quoting for strings containing special characters:
+Return ONLY plain YAML (no code fences) with validated results.
+
+YAML QUOTING RULES (MANDATORY):
+- Always wrap the following fields in double quotes: title, reason, owner_hint, next_step, thread_id, timestamp, confidence, validation_notes.
+- Quote any string containing colon (:), dash (-), hash (#), pipe (|), brackets, or exclamation (!).
+- Do not output code fences or commentary; only the YAML document.
 
 verified:
   - label: uhpai  # or erb; use none only when evidence contradicts the claim
     title: "Critical path blocked by missing API specs"
     reason: "Development team cannot proceed with user authentication module due to missing API documentation. Email from 2025-01-15 explicitly states: 'We cannot start development until we receive the API specs.' No response received after 12 days."
-    owner_hint: BA
+    owner_hint: "BA"
     next_step: "Provide complete API specs within 24 hours"
     evidence:
       - file: data/raw/Project_Phoenix/email1.txt
         lines: "15-22"
-    thread_id: thread_abc123
+    thread_id: "thread_abc123"
     timestamp: "2025-01-15T10:30:00"
-    confidence: high
+    confidence: "high"
     score: 4.7
     validation_notes: "Evidence directly supports claim. No resolution visible in thread."
   # Optional: if an item must be rejected, include a minimal rationale

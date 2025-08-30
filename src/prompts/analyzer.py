@@ -102,20 +102,25 @@ Calculate priority score using these weights:
 
 ## OUTPUT SPECIFICATIONS
 
-Return ONLY plain YAML (no code fences) with this structure. Use proper YAML quoting for strings containing special characters:
+Return ONLY plain YAML (no code fences) with this structure.
+
+YAML QUOTING RULES (MANDATORY):
+- Always wrap string fields in double quotes: title, reason, owner_hint, next_step, thread_id, timestamp, confidence.
+- If any string contains colon (:), dash (-), hash (#), pipe (|), brackets, or exclamation (!), it MUST be quoted.
+- Do not output code fences or commentary; only the YAML document.
 
 items:
   - label: uhpai  # or erb; NEVER none for valid findings
     title: "Critical path blocked by missing API specs"
     reason: "Development team cannot proceed with user authentication module due to missing API documentation. The specification was requested 12 days ago but still not provided. This directly impacts the Q2 delivery milestone for the login system."
-    owner_hint: BA
+    owner_hint: "BA"
     next_step: "Provide complete API specs within 24 hours"
     evidence:
       - file: data/raw/Project_Phoenix/email1.txt
         lines: "15-22"
-    thread_id: thread_abc123
+    thread_id: "thread_abc123"
     timestamp: "2025-01-15T10:30:00"
-    confidence: high
+    confidence: "high"
     score: 4.7
 
 ## ANALYSIS FRAMEWORK
@@ -146,6 +151,8 @@ items:
 **Executive Mindset**: Think like a Director - what would keep you up at night regarding QBR preparation?
 
 Always return 1–3 items. If strong evidence is unavailable, output the best candidates with "confidence": "low" and ensure each has at least one evidence citation (approximate file:line if exact is unclear from the chunk). Include items when multiple weak signals collectively suggest a blocker or unresolved action.
+
+Validation: Your output must be valid YAML parsable with yaml.safe_load on first try. If any field includes characters like ':' or '!' you must quote it.
 
 Analyze the evidence with surgical precision and return only the highest-impact risks that demand executive attention."""
 
