@@ -5,7 +5,6 @@ import hashlib
 import json
 import logging
 import os
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -25,11 +24,11 @@ class VectorStore:
     ):
         self.collection_name = collection_name
         self.persist_directory = persist_directory
-        self.client = None
-        self.collection = None
-        self.embedding_model = None
+        self.client: Any | None = None
+        self.collection: Any | None = None
+        self.embedding_model: Any | None = None
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Initialize ChromaDB client and embedding model."""
         try:
             self.client = chromadb.PersistentClient(
@@ -39,13 +38,18 @@ class VectorStore:
             # Load model
             try:
                 from src.services.config import get_config
+
                 config = get_config()
                 model_name = config.embedding.model_name
             except ImportError:
                 model_name = "Qwen/Qwen3-Embedding-0.6B"
 
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.embedding_model = AutoModel.from_pretrained(model_name)
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_name, trust_remote_code=False, revision="main"
+            )  # noqa: S603
+            self.embedding_model = AutoModel.from_pretrained(
+                model_name, trust_remote_code=False, revision="main"
+            )  # noqa: S603
             self.embedding_model.eval()
 
             # GPU/MPS support
@@ -78,13 +82,14 @@ class VectorStore:
     def generate_embeddings(
         self, texts: list[str], embed_batch_size: int = 32
     ) -> list[list[float]]:
-        """Generate embeddings for text chunks."""
         try:
             all_embeddings = []
 
             for i in range(0, len(texts), embed_batch_size):
                 sub_texts = texts[i : i + embed_batch_size]
-                inputs = self.tokenizer(sub_texts, return_tensors="pt", padding=True, truncation=True, max_length=512)
+                inputs = self.tokenizer(
+                    sub_texts, return_tensors="pt", padding=True, truncation=True, max_length=512
+                )
 
                 # Move to device
                 if torch.cuda.is_available():
@@ -126,19 +131,26 @@ class VectorStore:
         texts: list[str],
         metadatas: list[dict[str, Any]],
         embeddings: list[list[float]],
-    ):
+    ) -> None:
         """Upsert batch into collection."""
         try:
             if hasattr(self.collection, "upsert"):
-                self.collection.upsert(documents=texts, embeddings=embeddings, metadatas=metadatas, ids=ids)
+                self.collection.upsert(
+                    documents=texts, embeddings=embeddings, metadatas=metadatas, ids=ids
+                )
             else:
-                self.collection.add(documents=texts, embeddings=embeddings, metadatas=metadatas, ids=ids)
-        except Exception:
-            self.collection.add(documents=texts, embeddings=embeddings, metadatas=metadatas, ids=ids)
+                self.collection.add(
+                    documents=texts, embeddings=embeddings, metadatas=metadatas, ids=ids
+                )
+        except Exception as e:
+            logger.warning(f"Upsert failed, falling back to add: {e}")
+            self.collection.add(
+                documents=texts, embeddings=embeddings, metadatas=metadatas, ids=ids
+            )
 
     def store_chunks(
         self, chunks: list[dict[str, Any]], batch_size: int = 100, embed_batch_size: int = 32
-    ):
+    ) -> None:
         """Store chunks with embeddings in ChromaDB."""
         try:
             total_chunks = len(chunks)
@@ -161,7 +173,6 @@ class VectorStore:
             raise
 
     def get_collection_info(self) -> dict[str, Any]:
-        """Get information about the collection."""
         try:
             count = self.collection.count()
             return {
@@ -174,14 +185,12 @@ class VectorStore:
             return {}
 
 
-
-
 def process_chunks_to_vectorstore(
     input_dir: str,
     vectorstore_dir: str,
     collection_name: str = "email_chunks",
     batch_size: int = 100,
-):
+) -> dict[str, Any]:
     """Process chunks from input directory and store in vector database."""
     try:
         os.makedirs(vectorstore_dir, exist_ok=True)
@@ -213,11 +222,15 @@ def process_chunks_to_vectorstore(
         raise
 
 
-def main():
+def main() -> None:
     """CLI entry point for vector store creation."""
     parser = argparse.ArgumentParser(description="Create ChromaDB vector store from email chunks")
-    parser.add_argument("--input-dir", type=str, default="./data/clean", help="Directory containing chunks.json")
-    parser.add_argument("--vectorstore-dir", type=str, default=".vectorstore", help="Directory for vector store")
+    parser.add_argument(
+        "--input-dir", type=str, default="./data/clean", help="Directory containing chunks.json"
+    )
+    parser.add_argument(
+        "--vectorstore-dir", type=str, default=".vectorstore", help="Directory for vector store"
+    )
 
     args = parser.parse_args()
 

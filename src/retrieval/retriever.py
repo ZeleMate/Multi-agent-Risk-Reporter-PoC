@@ -2,7 +2,6 @@
 
 import logging
 import os
-import re
 from typing import Any
 
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -28,14 +27,20 @@ class HybridRetriever:
         self.persist_directory = persist_directory
         self.top_k = top_k
         self.prefilter_keywords = prefilter_keywords or [
-            "blocker", "risk", "urgent", "deadline", "error", "bug", "missing"
+            "blocker",
+            "risk",
+            "urgent",
+            "deadline",
+            "error",
+            "bug",
+            "missing",
         ]
 
-        self.client = None
-        self.collection = None
-        self.embedding_model = None
+        self.client: Any | None = None
+        self.collection: Any | None = None
+        self.embedding_model: Any | None = None
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Initialize ChromaDB client and embedding model."""
         try:
             self.client = chromadb.PersistentClient(
@@ -45,13 +50,18 @@ class HybridRetriever:
             # Load model
             try:
                 from src.services.config import get_config
+
                 config = get_config()
                 model_name = config.embedding.model_name
             except ImportError:
                 model_name = "Qwen/Qwen3-Embedding-0.6B"
 
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.embedding_model = AutoModel.from_pretrained(model_name)
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_name, trust_remote_code=False, revision="main"
+            )  # noqa: S603
+            self.embedding_model = AutoModel.from_pretrained(
+                model_name, trust_remote_code=False, revision="main"
+            )  # noqa: S603
             self.embedding_model.eval()
 
             # GPU/MPS support
@@ -77,13 +87,12 @@ class HybridRetriever:
             relevant_ids = []
             query_lower = query.lower()
 
-            for doc_id, document in zip(results["ids"], results["documents"]):
+            for doc_id, document in zip(results["ids"], results["documents"], strict=False):
                 doc_lower = document.lower()
 
                 # Check for query terms or prefilter keywords
-                has_match = (
-                    any(term in doc_lower for term in query_lower.split()) or
-                    any(keyword in doc_lower for keyword in self.prefilter_keywords)
+                has_match = any(term in doc_lower for term in query_lower.split()) or any(
+                    keyword in doc_lower for keyword in self.prefilter_keywords
                 )
 
                 if has_match:
@@ -97,7 +106,6 @@ class HybridRetriever:
             return []
 
     def generate_query_embedding(self, query: str) -> list[float]:
-        """Generate embedding for query."""
         try:
             inputs = self.tokenizer(query, return_tensors="pt", truncation=True, max_length=512)
 
@@ -120,7 +128,6 @@ class HybridRetriever:
     def semantic_search(
         self, query: str, candidate_ids: list[str] | None = None, top_k: int = 10
     ) -> list[dict[str, Any]]:
-        """Perform semantic search using vector similarity."""
         try:
             query_embedding = self.generate_query_embedding(query)
 
@@ -147,19 +154,24 @@ class HybridRetriever:
 
             # Format results
             formatted_results = []
-            for i, (doc_id, document, metadata, distance) in enumerate(zip(
-                results.get("ids", [[]])[0],
-                results.get("documents", [[]])[0],
-                results.get("metadatas", [[]])[0],
-                results.get("distances", [[]])[0]
-            )):
-                formatted_results.append({
-                    "id": doc_id,
-                    "text": document,
-                    "metadata": metadata,
-                    "score": 1 - distance,
-                    "rank": i + 1,
-                })
+            for i, (doc_id, document, metadata, distance) in enumerate(
+                zip(
+                    results.get("ids", [[]])[0],
+                    results.get("documents", [[]])[0],
+                    results.get("metadatas", [[]])[0],
+                    results.get("distances", [[]])[0],
+                    strict=False,
+                )
+            ):
+                formatted_results.append(
+                    {
+                        "id": doc_id,
+                        "text": document,
+                        "metadata": metadata,
+                        "score": 1 - distance,
+                        "rank": i + 1,
+                    }
+                )
 
             logger.info(f"Semantic search: {len(formatted_results)} results")
             return formatted_results
@@ -169,7 +181,6 @@ class HybridRetriever:
             return []
 
     def retrieve(self, query: str, top_k: int | None = None) -> list[dict[str, Any]]:
-        """Perform hybrid retrieval with keyword prefiltering and semantic search."""
         try:
             k = top_k or self.top_k
 
@@ -191,10 +202,7 @@ class HybridRetriever:
             logger.error(f"Retrieval failed: {e}")
             return []
 
-
-
     def get_collection_stats(self) -> dict[str, Any]:
-        """Get collection statistics."""
         try:
             return {
                 "collection_name": self.collection_name,
@@ -211,7 +219,6 @@ def create_retriever(
     top_k: int = 10,
     prefilter_keywords: list[str] | None = None,
 ) -> HybridRetriever:
-    """Factory function to create and initialize a HybridRetriever."""
     retriever = HybridRetriever(
         collection_name=collection_name,
         persist_directory=vectorstore_dir,
@@ -222,7 +229,7 @@ def create_retriever(
     return retriever
 
 
-def test_retrieval():
+def test_retrieval() -> None:
     """Test retriever with sample queries."""
     try:
         retriever = create_retriever()
