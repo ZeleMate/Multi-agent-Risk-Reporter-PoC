@@ -18,16 +18,16 @@ def test_imports():
 
         if not importlib.util.find_spec("src.ingestion.parser"):
             raise ImportError("src.ingestion.parser not found")
-        
+
         if not importlib.util.find_spec("src.ingestion.pii"):
             raise ImportError("src.ingestion.pii not found")
-        
+
         if not importlib.util.find_spec("src.retrieval.retriever"):
             raise ImportError("src.retrieval.retriever not found")
-        
+
         if not importlib.util.find_spec("src.retrieval.store"):
             raise ImportError("src.retrieval.store not found")
-        
+
         if not importlib.util.find_spec("src.services.config"):
             raise ImportError("src.services.config not found")
 

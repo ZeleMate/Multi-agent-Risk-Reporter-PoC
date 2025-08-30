@@ -60,7 +60,7 @@ agent_models:
 
         pipeline_yaml = """
 retrieval:
-  top_k: 10
+  top_k: 15
   prefilter_keywords: ["blocker", "risk", "urgent"]
 
 chunking:
