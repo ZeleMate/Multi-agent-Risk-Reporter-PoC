@@ -1,13 +1,24 @@
 retrieval:
-  top_k: 10
-  prefilter_keywords: ["blocker","risk","delayed","waiting","asap","urgent","deadline","unresolved","issue"]
+  top_k: 15
+  prefilter_keywords: [
+    "blocker","blocked","blocking","risk","issue","problem","bug","error",
+    "delayed","delay","hold","on hold","waiting","pending","asap","urgent","deadline",
+    "unresolved","missing","unclear","cannot","can't","fail","failure","incident","outage",
+    "prod","production","staging","workaround","investigate","fix","broken",
+    "approval","decision","specs","specification","api","dependency","dependencies",
+    "security","payment"
+  ]
 
 flags:
   uhpai:
-    aging_days: 5
+    aging_days: 3
     role_weights: {"director": 2.0, "pm": 1.5, "ba": 1.2, "dev": 1.0}
   erb:
-    critical_terms: ["blocked","waiting on","missing","unclear","cannot","security","payment","prod"]
+    critical_terms: [
+      "blocked","blocking","waiting on","pending","delay","on hold","missing","unclear",
+      "cannot","can't","security","payment","prod","production","staging","incident","outage",
+      "bug","error","workaround","specs","specification","dependency","dependencies"
+    ]
 
 scoring:
   repeat_weight: 0.5
