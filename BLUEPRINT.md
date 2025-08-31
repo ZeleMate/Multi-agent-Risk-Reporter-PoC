@@ -18,9 +18,9 @@ graph TD
   A[Raw Email Files] --> B[Header Parsing]
   B --> C[PII Redaction]
   C --> D[Thread Reconstruction]
-  D --> E[Chunking + Metadata]
-  E --> F[Embeddings (Qwen)]
-  F --> G[ChromaDB]
+  D --> E[Chunking and Metadata]
+  E --> F[Embeddings with a Qwen model]
+  F --> G[Local ChromaDB]
   G --> H[Hybrid Retrieval]
 ```
 
@@ -40,16 +40,16 @@ Deliverable: implemented in `src/ingestion/`, configuration in `configs/`.
 ## 2) The Analytical Engine (Multi‑Step AI Logic)
 
 ### Attention Flags (executive‑relevant)
-- **UHPAI** — Unresolved High‑Priority Action Items (e.g., unanswered > 5 days, missing clarifications/approvals).
+- **UHPAI** — Unresolved High‑Priority Action Items (e.g., unanswered > 10 days, missing clarifications/approvals).
 - **ERB** — Emerging Risks/Blockers (e.g., security/payment/production issues, critical blockers, unclear ownership).
 
 ### Pipeline
 ```mermaid
 graph TD
   A[Chunks via Hybrid Retrieval] --> B[Analyzer Agent]
-  B --> C[Candidates (YAML, citations)]
+  B --> C[Candidates in YAML plus citations]
   C --> D[Verifier Agent]
-  D --> E[Verified (YAML, merged, confidence)]
+  D --> E[Verified in YAML with merged confidence]
   E --> F[Composer Agent]
   F --> G[Executive Markdown Report]
 ```
@@ -62,7 +62,7 @@ graph TD
 ### Models (current configuration)
 - Analyzer: `gpt‑5‑mini`
 - Verifier: `gpt‑5‑mini`
-- Composer: `gpt‑5` (always)
+- Composer: `gpt‑5`
 
 ### Scoring (deterministic)
 `score = role_weight + topic_weight + repeat_weight`  
