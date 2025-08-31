@@ -41,7 +41,7 @@ REPORT_DIR := ./data/report
 # Setup virtual environment and install dependencies
 setup:
 	@echo "Setting up development environment with uv..."
-	$(UV) sync --dev
+	$(UV) sync --extra dev
 	@echo "Setup complete! Use 'uv run' to run commands or 'uv shell' to activate environment"
 
 # Data ingestion: parse & clean documents
