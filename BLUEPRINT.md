@@ -30,7 +30,7 @@ graph TD
 
 ### Scalability roadmap (Ingestion)
 - Implement file‑level parallel processing (ThreadPoolExecutor) for reading/normalizing emails; scale workers to CPU cores.
-- Implement incremental updates: content‑hash (`sha256`) based change detection on raw files; idempotent upsert of `data/clean` artifacts.
+- Implement incremental updates: content‑hash (`sha256`) based stable chunk IDs; idempotent upsert into Chroma via hash-based IDs.
 - Backpressure and memory limits: bounded queues between stages; stream large files instead of loading fully into memory.
 - Failure isolation: per‑file retries with granular logging; accept partial successes for non‑critical files.
 - Version the deterministic PII redaction rules; enable safe rollback.
