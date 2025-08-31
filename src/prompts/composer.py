@@ -111,35 +111,18 @@ You are creating a **Portfolio Health Report** for a **Director of Engineering**
 
 ## OUTPUT SPECIFICATIONS
 
-Return the complete report in Markdown format:
+Return ONLY the report body in Markdown (no code fences, no preambles, no notes). The output MUST strictly follow this structure and order:
 
-```markdown
-# Portfolio Health Report - QBR Preparation
-## Executive Summary
+- Start with the H1 heading: "# Portfolio Health Report - QBR Preparation"
+- Then the H2 heading: "## Executive Summary" with 3–6 bullet points
+- Then the H2 heading: "## Risk Details" with a Markdown table having EXACTLY these columns in this order:
+  - Type | Title | Why it matters | Owner | Next step | Evidence | Conf/Score
+- Then the H2 heading: "## Evidence Appendix" with H3 subsections per risk and quoted evidence lines
 
-- **CRITICAL**: Production filename bug affecting user profile uploads, 3 weeks unresolved
-- **HIGH**: Cross-project communication confusion causing potential missed updates
-- **MEDIUM**: Staging environment anomaly requires root cause investigation
-
-## Risk Details
-
-| Type | Title | Why it matters | Owner | Next step | Evidence | Conf/Score |
-|------|-------|----------------|--------|-----------|----------|------------|
-| ERB | Staging filename bug affects readiness | Filenames with spaces cause 404s; customer risk | Developer | Fix validation logic + tests | email1.txt:25-35 (thread_abc) | high / 4.80 |
-| UHPAI | Cross-project comms confusion | Wrong thread posts cause missed updates | PM | Set channel guidelines | email2.txt:10-15 (thread_def) | mid / 3.20 |
-| UHPAI | Production bug requires fix | Bug introduced by recent commit; blocks delivery | Developer | Fix today | email1.txt:40-45 (thread_abc) | high / 4.90 |
-
-## Evidence Appendix
-
-### Staging environment filename bug affects production readiness
-"I'm experiencing something strange on staging. If I upload a new user profile picture, it shows the old image after saving... The profile picture upload is indeed acting up. I figured out that it only happens if the image name contains spaces." (email1.txt:25-35)
-
-### Cross-project communication confusion needs process fix
-"Oh, sorry, indeed! I wanted to write this in the 'Solar Panel Tender project' correspondence. My apologies for the confusion!" (email2.txt:10-15)
-
-### Production bug introduced by recent commit requires immediate fix
-"Yes, it did. I rewrote the filename validation to replace special characters. It's possible the frontend isn't receiving the modified filename. My apologies, I'll check it immediately. This is clearly my mistake." (email1.txt:40-45)
-```
+Formatting constraints (MANDATORY):
+- Do NOT use code fences (no ``` of any kind) anywhere in the output.
+- Do NOT include system or developer notes; return only the report.
+- Keep headings and table header exactly as specified.
 
 ## VERIFIED RISKS TO PROCESS
 {risks_text}
@@ -174,7 +157,9 @@ Redact all personally identifiable information (PII) with a special token, inclu
 - **Strategic**: Portfolio-level implications
 - **Professional**: Appropriate for executive consumption
 
-Compose the executive portfolio health report that will drive strategic decision-making at the highest levels."""
+Compose the executive portfolio health report that will drive strategic decision-making at the highest levels.
+
+BEGIN REPORT NOW (remember: no code fences)."""
 
     return _escape_braces(prompt)
 
