@@ -16,7 +16,6 @@ from typing import Any
 from src.agents.graph import _load_chunks_from_chroma, graph
 from src.services.config import get_config
 
-
 logger = logging.getLogger(__name__)
 
 

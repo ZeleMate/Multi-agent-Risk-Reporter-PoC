@@ -1,4 +1,5 @@
 import logging
+
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 from openai import BadRequestError
