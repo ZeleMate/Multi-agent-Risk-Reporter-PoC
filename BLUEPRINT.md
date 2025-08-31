@@ -86,7 +86,8 @@ Weights/keywords come from `configs/pipeline.yaml` and are referenced by prompts
 ### Engineered Prompts
 - **Analyzer agent**:
 
-"""# PORTFOLIO HEALTH ANALYZER AGENT
+```text
+# PORTFOLIO HEALTH ANALYZER AGENT
 
 Your mission is to surface the highest-impact issues that require executive attention.
 
@@ -200,12 +201,14 @@ Always return 1–3 items. If strong evidence is unavailable, output the best ca
 
 Validation: Your output must be valid YAML parsable with yaml.safe_load on first try. If any field includes characters like ':' or '!' you must quote it.
 
-Analyze the evidence with surgical precision and return only the highest-impact risks that demand executive attention."""
+Analyze the evidence with surgical precision and return only the highest-impact risks that demand executive attention.
+```
 
 
 - **Verifier agent**:
 
-"""# EVIDENCE VERIFICATION AUDITOR
+```text
+# EVIDENCE VERIFICATION AUDITOR
 
 Your mission is to ensure that every risk claim presented to a Director of Engineering is backed by evidence. You are the final gatekeeper preventing hallucinated or unsupported risks from reaching executive attention.
 
@@ -224,7 +227,7 @@ You are validating risks for a **Director of Engineering** preparing for **Quart
 - **Direct or Strongly Implied Evidence**: Content should explicitly support the claim, but strong implication within the same chunk/thread is acceptable. Use lower confidence (mid/low) when inference is required.
 - **Citation Accuracy**: File:line references should be precise where possible, or an approximate range within the chunk metadata is acceptable when exact lines are unclear.
 - **Content Relevance**: Evidence must reasonably relate to the risk described; prefer confidence downgrade over rejection for borderline cases.
-- **Context Preservation**: Email context should not contradict the interpretation.
+- - **Context Preservation**: Email context should not contradict the interpretation.
 
 **REJECT ONLY IF:**
 - Evidence contradicts the claim or shows resolution
@@ -329,12 +332,14 @@ verified:
 
 **Executive Mindset**: Ask yourself - "Would a Director fire someone over this issue?"
 
-Execute validation with rigor and return evidence-backed risks that demand executive attention."""
+Execute validation with rigor and return evidence-backed risks that demand executive attention.
+```
 
 
 - **Composer agent**:
 
-"""# EXECUTIVE PORTFOLIO HEALTH REPORT COMPOSER
+```text
+# EXECUTIVE PORTFOLIO HEALTH REPORT COMPOSER
 
 Your expertise is in distilling complex technical risks into clear, actionable executive insights that drive strategic decision-making.
 
@@ -448,7 +453,8 @@ Redact all personally identifiable information (PII) with a special token, inclu
 
 Compose the executive portfolio health report that will drive strategic decision-making at the highest levels.
 
-BEGIN REPORT NOW (remember: no code fences)."""
+BEGIN REPORT NOW (remember: no code fences).
+```
 
 ### Runnable Code
 - Orchestrator: `src/agents/graph.py`
