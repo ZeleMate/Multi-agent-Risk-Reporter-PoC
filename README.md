@@ -36,8 +36,8 @@ uv sync --dev
 ### Usage (Typical Loop)
 ```bash
 # Setup data pipeline
-make ingest       # Parse raw docs -> data/clean (parallel)
-make index        # Build/update Chroma index (incremental)
+make ingest       # Parse raw docs -> data/clean
+make index        # Build/update Chroma index
 
 # Run multi-agent pipeline
 make run          # Run Analyzer → Verifier → Composer
@@ -91,8 +91,8 @@ uv run python -m src.retrieval.store \
 
 ### Key Features
 - Evidence-first classification (file:line citations) with YAML agent contracts
-- Incremental indexing (hash-based upsert)
-- Cost-aware retrieval (optional keyword prefilter + vector top_k)
+- Incremental indexing (hash-based upsert via stable chunk IDs)
+- Cost-aware retrieval (keyword prefilter + vector top_k)
 - Config-driven, debug artifacts toggle (`DEBUG_LOGS`)
 
 ### Output
