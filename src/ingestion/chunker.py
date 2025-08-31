@@ -1,4 +1,5 @@
 import logging
+import hashlib
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -68,7 +69,9 @@ class EmailChunker:
             if current_tokens + sentence_tokens > self.chunk_size and current_chunk:
                 # Create chunk
                 chunk_text = " ".join(current_chunk)
-                chunk_id = f"{thread_id}_{chunk_index + 1}_{hash(chunk_text) % 10000}"
+                # Deterministic, content-based chunk id (stable across runs)
+                digest = hashlib.sha256(chunk_text.encode("utf-8")).hexdigest()[:16]
+                chunk_id = f"{thread_id}_{chunk_index + 1}_{digest}"
 
                 chunk = Chunk(
                     text=chunk_text,
@@ -98,7 +101,8 @@ class EmailChunker:
         # Add final chunk
         if current_chunk:
             chunk_text = " ".join(current_chunk)
-            chunk_id = f"{thread_id}_{chunk_index + 1}_{hash(chunk_text) % 10000}"
+            digest = hashlib.sha256(chunk_text.encode("utf-8")).hexdigest()[:16]
+            chunk_id = f"{thread_id}_{chunk_index + 1}_{digest}"
 
             chunk = Chunk(
                 text=chunk_text,
