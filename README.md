@@ -81,7 +81,7 @@ uv run python -m src.retrieval.store \
 
 ### Tech Stack
 - Orchestration: LangGraph (Analyzer, Verifier, Composer)
-- LLMs: `gpt-5-mini` (analysis/verification), `gpt-5` (composition)
+- LLMs: `gpt-5-mini` (analysis/verification), `gpt-5` (composition) -- State of the Art models, gpt-5-mini for the smaller tasks and gpt-5 with medium reasoning for the report creation.
 - Embeddings & Vector Store: Qwen3 Embedding + ChromaDB (local)
 - Ingestion: deterministic parsing, PII redaction, thread-aware chunking
 - Tooling: uv, Black, Ruff, MyPy, Bandit, pytest
