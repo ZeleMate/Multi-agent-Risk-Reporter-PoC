@@ -51,6 +51,7 @@ class AlternativeModelConfig:
     provider: str = "openai"
     chat_model: str = "gpt-5"
     temperature: float = 0.7
+    reasoning_effort: str = "medium"
     max_output_tokens: int = 50000
 
 
