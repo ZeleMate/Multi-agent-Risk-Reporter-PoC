@@ -20,7 +20,7 @@ def map_analyzer_items_to_candidates(state: OverallState) -> dict[str, Any]:
     This maintains backward compatibility with analyzer returning 'items'
     while the verifier expects 'candidates'.
     """
-    items = state.get("items", [])  # type: ignore[assignment]
+    items = state.get("items", [])
     if items:
         return {"candidates": items}
     return {}
