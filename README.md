@@ -47,6 +47,9 @@ make report       # Write data/report/portfolio_health.md
 make lint         # Code quality checks (Black, Ruff, MyPy, Bandit)
 make fmt          # Format code (Black & Ruff)
 make test         # Run tests (pytest)
+
+# Or run via installed CLI entrypoint
+risk-reporter --project-context "QBR preparation report" --output-file data/report/portfolio_health.md
 ```
 
 ### Configuration
