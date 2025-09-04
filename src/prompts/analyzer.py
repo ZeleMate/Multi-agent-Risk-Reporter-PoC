@@ -50,7 +50,7 @@ You are analyzing project communications for a **Director of Engineering** who n
 ## ATTENTION FLAGS TO DETECT
 
 ### 1. **UHPAI (Unresolved High-Priority Action Items)**
-**Definition**: Questions, decisions, or tasks that have gone unanswered/unaddressed for a 5 days or more
+**Definition**: Questions, decisions, or tasks that have gone unanswered/unaddressed for 10 days or more
 **Business Impact**: These represent stalled progress and potential schedule slippage
 **Examples**:
 - Unanswered technical questions blocking development

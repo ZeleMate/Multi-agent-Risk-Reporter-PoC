@@ -101,7 +101,7 @@ def sample_chunks():
     # Chunk 2 - UHPAI type (Unresolved High-Priority Action Item)
     chunk2 = Chunk(
         id="chunk_002",
-        text="The security vulnerability in the payment module needs immediate attention. This is a high priority item that has been unresolved for 5 days.",
+        text="The security vulnerability in the payment module needs immediate attention. This is a high priority item that has been unresolved for 10 days.",
         metadata={
             "file": "./test_data/raw/email2.txt",
             "line_start": 1,
