@@ -175,7 +175,7 @@ class AppConfig:
     scoring: ScoringConfig = field(default_factory=ScoringConfig)
     report: ReportConfig = field(default_factory=ReportConfig)
     # Debug
-    debug_logs: bool = False
+    debug_logs: bool = True
 
     def __post_init__(self) -> None:
         """Load API key from environment."""

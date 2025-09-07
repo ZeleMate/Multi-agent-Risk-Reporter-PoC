@@ -23,7 +23,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run the Multi-agent Risk Reporter pipeline")
     parser.add_argument("--vectorstore-dir", default=os.getenv("VECTORSTORE_DIR", ".vectorstore"))
     parser.add_argument("--output-file", default="")
-    parser.add_argument("--project-context", default="Portfolio Health Report for Quarterly Business Review Preparation")
+    parser.add_argument(
+        "--project-context",
+        default="Portfolio Health Report for Quarterly Business Review Preparation",
+    )
     args = parser.parse_args()
 
     # Load config and prepare retrieval query
@@ -49,7 +52,10 @@ def main() -> None:
                 + (config.retrieval.prefilter_keywords or [])
             )
         )
-        project_ctx = args.project_context or "Portfolio Health Report for Quarterly Business Review Preparation"
+        project_ctx = (
+            args.project_context
+            or "Portfolio Health Report for Quarterly Business Review Preparation"
+        )
         query = f"{project_ctx} " + " ".join(keywords)
 
         topk = retriever.retrieve(query, top_k=config.retrieval.top_k)

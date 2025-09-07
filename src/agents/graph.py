@@ -78,7 +78,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run multi-agent risk reporter pipeline")
     parser.add_argument("--vectorstore-dir", default=os.getenv("VECTORSTORE_DIR", ".vectorstore"))
     parser.add_argument("--output-file", default="")
-    parser.add_argument("--project-context", default="Portfolio Health Report for Quarterly Business Review Preparation")
+    parser.add_argument(
+        "--project-context",
+        default="Portfolio Health Report for Quarterly Business Review Preparation",
+    )
     args = parser.parse_args()
 
     # Load config for retrieval settings
