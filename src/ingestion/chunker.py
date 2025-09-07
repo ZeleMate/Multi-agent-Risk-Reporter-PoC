@@ -48,6 +48,7 @@ class EmailChunker:
         for email in thread_data.get("emails", []):
             email_header = f"From: {email.get('sender_name', 'Unknown')} [{email.get('sender_role', 'Unknown')}]\n"
             email_header += f"To: {', '.join([r.get('name', 'Unknown') for r in email.get('to_recipients', [])])}\n"
+            email_header += f"Cc: {', '.join([r.get('name', 'Unknown') for r in email.get('cc_recipients', [])])}\n"
             email_header += f"Date: {email.get('date', 'Unknown')}\n"
             email_header += f"Subject: {email.get('subject', 'Unknown')}\n\n"
 
