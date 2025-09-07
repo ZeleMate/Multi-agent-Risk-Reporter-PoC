@@ -3,7 +3,6 @@ import logging
 import os
 import re
 from datetime import datetime
-from email.utils import parsedate_to_datetime
 from typing import Any
 
 from src.ingestion.chunker import create_chunks
@@ -16,9 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 def normalize_date(date_str: str) -> dict[str, Any]:
-    """Normalize date string and return epoch timestamp."""
+    """Normalize hungarian date string and return epoch timestamp."""
     try:
-        dt = parsedate_to_datetime(date_str)
+        dt = datetime.strptime(date_str, "%Y.%m.%d %H:%M")
         return {"normalized_date": dt.isoformat(), "epoch_timestamp": int(dt.timestamp())}
     except Exception as e:
         logger.debug(f"Date parsing failed for '{date_str}': {e}")
@@ -122,7 +121,10 @@ def parse_single_email(
     try:
         # Extract From field
         from_match = re.search(
-            r"From:\s*(.+?)\s*<([^>]+)>|From:\s*(.+?)\s+([^\s]+@[^\s]+)", email_content
+            r"From:\s*(.+?)\s*\(([^)]+)\)|" +
+            r"From:\s*(.+?)\s*<([^>]+)>|" +
+            r"From:\s*(.+?)\s+([^\s]+@[^\s]+)",
+            email_content
         )
         if not from_match:
             logger.warning("Could not parse From line")
@@ -131,8 +133,10 @@ def parse_single_email(
         # Get sender info
         if from_match.group(2):
             sender_info, sender_email = from_match.group(1).strip(), from_match.group(2).strip()
-        else:
+        elif from_match.group(4):
             sender_info, sender_email = from_match.group(3).strip(), from_match.group(4).strip()
+        else:
+            sender_info, sender_email = from_match.group(5).strip(), from_match.group(6).strip()
 
         # Extract To and Cc fields
         to_match = re.search(r"To:\s*(.+?)(?:\n|$)", email_content, re.MULTILINE)
