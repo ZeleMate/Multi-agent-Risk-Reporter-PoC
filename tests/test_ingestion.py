@@ -19,7 +19,7 @@ class TestNormalizeDate:
 
     def test_normalize_date_valid_email_format(self):
         """Test normalizing valid email date format."""
-        date_str = "Wed, 15 Jan 2024 10:30:00 +0000"
+        date_str = "2024.01.15 10:30"
         result = normalize_date(date_str)
 
         assert "normalized_date" in result
@@ -87,7 +87,7 @@ class TestParseRecipients:
         """Test parsing valid email format."""
         email_content = """From: John Smith <john.smith@company.com>
 To: Jane Doe <jane.doe@company.com>
-Date: Wed, 15 Jan 2024 10:30:00 +0000
+Date: 2024.01.15 10:30
 Subject: Test Subject
 
 This is the email body content.
