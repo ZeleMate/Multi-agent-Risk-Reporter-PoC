@@ -121,10 +121,10 @@ def parse_single_email(
     try:
         # Extract From field
         from_match = re.search(
-            r"From:\s*(.+?)\s*\(([^)]+)\)|" +
-            r"From:\s*(.+?)\s*<([^>]+)>|" +
-            r"From:\s*(.+?)\s+([^\s]+@[^\s]+)",
-            email_content
+            r"From:\s*(.+?)\s*\(([^)]+)\)|"
+            + r"From:\s*(.+?)\s*<([^>]+)>|"
+            + r"From:\s*(.+?)\s+([^\s]+@[^\s]+)",
+            email_content,
         )
         if not from_match:
             logger.warning("Could not parse From line")
