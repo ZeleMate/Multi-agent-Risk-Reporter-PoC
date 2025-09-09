@@ -85,6 +85,9 @@ class EmailChunker:
                         "total_emails": thread_data.get("total_emails", 0),
                         "participants": thread_data.get("participants", []),
                         "subject": thread_data.get("subject", ""),
+                        "canonical_subject": thread_data.get("canonical_subject", ""),
+                        "start_date": thread_data.get("start_date", ""),
+                        "end_date": thread_data.get("end_date", ""),
                         "chunk_size": current_tokens,
                     },
                 )
@@ -116,6 +119,9 @@ class EmailChunker:
                     "total_emails": thread_data.get("total_emails", 0),
                     "participants": thread_data.get("participants", []),
                     "subject": thread_data.get("subject", ""),
+                    "canonical_subject": thread_data.get("canonical_subject", ""),
+                    "start_date": thread_data.get("start_date", ""),
+                    "end_date": thread_data.get("end_date", ""),
                     "chunk_size": current_tokens,
                 },
             )
