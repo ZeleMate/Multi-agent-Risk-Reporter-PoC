@@ -23,16 +23,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
-      - uses: astral-sh/setup-uv@v1
+      - uses: astral-sh/setup-uv@162b8acf397cb069dec09a3f5a9847cf71cfa46a # v1.0.7
         with:
           version: "latest"
 
       - name: Cache uv
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
@@ -51,7 +51,7 @@ jobs:
         run: uv run bandit -r src/ || true
 
       - name: Markdownlint
-        uses: avto-dev/markdown-lint@v1
+        uses: avto-dev/markdown-lint@04d43ee9191307b50935a753da3b775ab695eceb # v1.5.0
         with:
           args: "**/*.md"
         continue-on-error: true
@@ -65,14 +65,14 @@ jobs:
       matrix:
         python: ["3.11"] # bővíthető: ["3.10","3.11","3.12"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python }}
-      - uses: astral-sh/setup-uv@v1
+      - uses: astral-sh/setup-uv@162b8acf397cb069dec09a3f5a9847cf71cfa46a # v1.0.7
 
       - name: Cache uv
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
