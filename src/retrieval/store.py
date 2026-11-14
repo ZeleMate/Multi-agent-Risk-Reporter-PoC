@@ -179,7 +179,7 @@ class VectorStore:
                 embeddings = self.generate_embeddings(texts, embed_batch_size=embed_batch_size)
 
                 self.upsert_batch(ids=ids, texts=texts, metadatas=metadatas, embeddings=embeddings)
-                logger.info(f"Stored batch {i//batch_size + 1}")
+                logger.info(f"Stored batch {i // batch_size + 1}")
 
             logger.info(f"Stored {total_chunks} chunks")
 
