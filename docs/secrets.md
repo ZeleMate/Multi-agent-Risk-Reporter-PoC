@@ -6,7 +6,6 @@ Following the OWASP Secrets Management Cheat Sheet: centralise, prefer short-liv
 
 | Secret | Store | Used by | Rotation |
 |---|---|---|---|
-| `CLAUDE_CODE_OAUTH_TOKEN` | GitHub Actions secret | `claude-review.yml` | yearly (the token expires after 1 year) or on leak |
 | `SONARQUBE_TOKEN` | Local environment (keychain), never in the repo | `.mcp.json` (SonarQube MCP server) | yearly |
 | `RELEASE_PLEASE_TOKEN` (optional) | GitHub Actions secret | `release.yml` | fine-grained PAT, ≤ 1 year |
 
