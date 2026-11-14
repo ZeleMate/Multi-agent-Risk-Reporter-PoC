@@ -25,15 +25,15 @@ def get_analyzer_prompt(
         metadata = chunk.get("metadata", {})
         evidence_text += f"""
 EVIDENCE {i}:
-File: {_escape_braces(metadata.get('file', 'Unknown'))}
-Lines: {metadata.get('line_start', '?')}-{metadata.get('line_end', '?')}
-Thread ID: {_escape_braces(metadata.get('thread_id', 'Unknown'))}
-Participants: {', '.join(metadata.get('participants', []))}
-Date: {metadata.get('start_date', 'Unknown')}
-Subject: {_escape_braces(metadata.get('subject', 'Unknown'))}
+File: {_escape_braces(metadata.get("file", "Unknown"))}
+Lines: {metadata.get("line_start", "?")}-{metadata.get("line_end", "?")}
+Thread ID: {_escape_braces(metadata.get("thread_id", "Unknown"))}
+Participants: {", ".join(metadata.get("participants", []))}
+Date: {metadata.get("start_date", "Unknown")}
+Subject: {_escape_braces(metadata.get("subject", "Unknown"))}
 
 CONTENT:
-{chunk['text']}
+{chunk["text"]}
 
 ---
 """

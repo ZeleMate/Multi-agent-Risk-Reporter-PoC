@@ -19,19 +19,19 @@ def get_verifier_prompt(candidates: list[FlagItem], full_evidence: list[dict[str
     for i, candidate in enumerate(candidates, 1):
         candidates_text += f"""
 CANDIDATE {i}:
-Label: {candidate.get('label', 'Unknown')}
-Title: {_escape_braces(candidate.get('title', 'Unknown'))}
-Reason: {_escape_braces(candidate.get('reason', 'Unknown'))}
-Owner: {_escape_braces(candidate.get('owner_hint', 'Unknown'))}
-Next Step: {_escape_braces(candidate.get('next_step', 'Unknown'))}
-Score: {candidate.get('score', 0)}
-Confidence: {_escape_braces(candidate.get('confidence', 'Unknown'))}
-Thread ID: {_escape_braces(candidate.get('thread_id', 'Unknown'))}
-Evidence Citations: {len(candidate.get('evidence', []))} references
+Label: {candidate.get("label", "Unknown")}
+Title: {_escape_braces(candidate.get("title", "Unknown"))}
+Reason: {_escape_braces(candidate.get("reason", "Unknown"))}
+Owner: {_escape_braces(candidate.get("owner_hint", "Unknown"))}
+Next Step: {_escape_braces(candidate.get("next_step", "Unknown"))}
+Score: {candidate.get("score", 0)}
+Confidence: {_escape_braces(candidate.get("confidence", "Unknown"))}
+Thread ID: {_escape_braces(candidate.get("thread_id", "Unknown"))}
+Evidence Citations: {len(candidate.get("evidence", []))} references
 
 
 EVIDENCE CITATIONS:
-{candidate.get('evidence', [])}
+{candidate.get("evidence", [])}
 
 ---
 """
@@ -41,16 +41,16 @@ EVIDENCE CITATIONS:
         metadata = chunk.get("metadata", {})
         evidence_text += f"""
 EVIDENCE CHUNK {idx}:
-File: {_escape_braces(metadata.get('file', 'Unknown'))}
-Lines: {metadata.get('line_start', '?')}-{metadata.get('line_end', '?')}
-Thread ID: {metadata.get('thread_id', 'Unknown')}
-Participants: {', '.join(metadata.get('participants', []))}
-Date: {metadata.get('start_date', 'Unknown')}
-Subject: {_escape_braces(metadata.get('subject', 'Unknown'))}
-Total Emails in Thread: {metadata.get('total_emails', 0)}
+File: {_escape_braces(metadata.get("file", "Unknown"))}
+Lines: {metadata.get("line_start", "?")}-{metadata.get("line_end", "?")}
+Thread ID: {metadata.get("thread_id", "Unknown")}
+Participants: {", ".join(metadata.get("participants", []))}
+Date: {metadata.get("start_date", "Unknown")}
+Subject: {_escape_braces(metadata.get("subject", "Unknown"))}
+Total Emails in Thread: {metadata.get("total_emails", 0)}
 
 CONTENT:
-{chunk['text']}
+{chunk["text"]}
 
 ---
 """

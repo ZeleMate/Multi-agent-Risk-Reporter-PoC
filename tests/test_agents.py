@@ -48,7 +48,8 @@ items:
 
         # Create test state
         state = OverallState(
-            chunks=sample_chunks[:2], project_context="Test project"  # Limit to 2 chunks
+            chunks=sample_chunks[:2],
+            project_context="Test project",  # Limit to 2 chunks
         )
 
         # Execute agent
