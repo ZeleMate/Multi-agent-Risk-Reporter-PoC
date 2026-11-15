@@ -1,6 +1,6 @@
 [project]
 name = "multi-agent-risk-reporter"
-version = "1.0.0"
+version = "1.0.1"
 description = "Multi-agent Risk Reporter PoC - Transform unstructured documents into structured, evidence-backed risk reports using LangGraph and ChromaDB"
 readme = "README.md"
 requires-python = ">=3.11"
