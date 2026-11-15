@@ -3,7 +3,7 @@ name = "multi-agent-risk-reporter"
 version = "1.0.0"
 description = "Multi-agent Risk Reporter PoC - Transform unstructured documents into structured, evidence-backed risk reports using LangGraph and ChromaDB"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11.5"
 keywords = ["risk-reporting", "multi-agent", "langgraph", "chromadb", "nlp", "document-analysis"]
 classifiers = [
     "Development Status :: 3 - Alpha",
