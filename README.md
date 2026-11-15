@@ -1,6 +1,6 @@
 [![CI](https://github.com/ZeleMate/Multi-agent-Risk-Reporter-PoC/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/ZeleMate/Multi-agent-Risk-Reporter-PoC/actions/workflows/ci.yaml)
 [![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Linting: Ruff](https://img.shields.io/badge/linting-ruff-6638B6.svg)](https://github.com/charliermarsh/ruff)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/ZeleMate/Multi-agent-Risk-Reporter-PoC/actions/workflows/ci.yaml)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-28a745.svg)](https://github.com/ZeleMate/Multi-agent-Risk-Reporter-PoC)

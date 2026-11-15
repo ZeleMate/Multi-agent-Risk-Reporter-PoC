@@ -42,7 +42,7 @@ REPORT_DIR := ./data/report
 # Setup virtual environment and install dependencies
 setup:
 	@echo "Setting up development environment with uv..."
-	$(UV) sync --extra dev
+	$(UV) sync
 	@echo "Setup complete! Use 'uv run' to run commands or 'uv shell' to activate environment"
 
 # Data ingestion: parse & clean documents
@@ -78,11 +78,11 @@ report:
 # Code quality checks
 lint:
 	@echo "Running code quality checks..."
-	@echo "Running Black..."
-	@if $(UV_VENV) black --check --line-length=100 src/ tests/; then \
-		echo "Black: PASSED"; \
+	@echo "Running Ruff format..."
+	@if $(UV_VENV) ruff format --check src/ tests/; then \
+		echo "Ruff format: PASSED"; \
 	else \
-		echo "Black: FAILED"; \
+		echo "Ruff format: FAILED"; \
 	fi
 	@echo "Running Ruff..."
 	@if $(UV_VENV) ruff check src/ tests/; then \
@@ -107,7 +107,7 @@ lint:
 # Code formatting
 fmt:
 	@echo "Formatting code..."
-	$(UV_VENV) black --line-length=100 src/ tests/
+	$(UV_VENV) ruff format src/ tests/
 	$(UV_VENV) ruff check --fix src/ tests/
 	@echo "Code formatting complete"
 

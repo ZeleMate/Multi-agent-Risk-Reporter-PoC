@@ -25,5 +25,3 @@ agent_models:
   analyzer: "primary_model"    # Risk classification - needs precision
   verifier: "primary_model"    # Evidence validation - needs reasoning
   composer: "alternative_model" # Report generation - can use more capable model
-
-
