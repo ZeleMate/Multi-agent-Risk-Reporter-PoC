@@ -18,6 +18,22 @@ class TestVectorStore:
         assert store.collection_name == "test_collection"
         assert store.persist_directory == "/tmp/test"
 
+    def test_store_chunks_upserts_in_batches(self):
+        """store_chunks embeds and upserts each batch of chunks in order."""
+        store = VectorStore()
+        store.collection = Mock()
+        chunks = [
+            {"id": f"c{n}", "text": f"text {n}", "metadata": {"source": "doc"}} for n in range(5)
+        ]
+
+        with patch.object(
+            store, "generate_embeddings", side_effect=lambda texts, **_: [[0.0]] * len(texts)
+        ):
+            store.store_chunks(chunks, batch_size=2)
+
+        upserted = [call.kwargs["ids"] for call in store.collection.upsert.call_args_list]
+        assert upserted == [["c0", "c1"], ["c2", "c3"], ["c4"]]
+
     @patch("src.retrieval.store.chromadb.PersistentClient")
     @patch("src.retrieval.store.AutoTokenizer")
     @patch("src.retrieval.store.AutoModel")
