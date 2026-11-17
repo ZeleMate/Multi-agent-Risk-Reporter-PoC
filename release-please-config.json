@@ -1,10 +1,19 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "include-component-in-tag": false,
+  "draft": true,
+  "force-tag-creation": true,
   "packages": {
     ".": {
       "release-type": "python",
-      "package-name": "multi-agent-risk-reporter-poc"
+      "package-name": "multi-agent-risk-reporter-poc",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='multi-agent-risk-reporter')].version"
+        }
+      ]
     }
   }
 }

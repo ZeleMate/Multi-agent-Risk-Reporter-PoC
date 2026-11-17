@@ -1,8 +1,12 @@
 name: Release
 
 # release-please keeps a release PR open from Conventional Commit titles; merging it tags and releases.
-# PRs opened with GITHUB_TOKEN do not trigger CI, so the release PR's ci-ok check never runs.
-# Fix: add a RELEASE_PLEASE_TOKEN secret (fine-grained PAT: contents + pull requests read/write on this repo).
+# It needs a RELEASE_PLEASE_TOKEN secret (fine-grained PAT on this repo: contents + pull requests
+# read/write). GITHUB_TOKEN can't do it: the bootstrap stops Actions from opening PRs, and PRs it
+# opens wouldn't trigger CI, so the release PR's ci-ok check would never run.
+#
+# Releases are created as drafts (with their tag) and published by the sbom job once the SBOM
+# is attached: an immutable release can't take assets after it is published.
 on:
   push:
     branches: [main]
@@ -26,10 +30,18 @@ jobs:
       python: ${{ steps.rp.outputs['release_created'] }}
       python_tag: ${{ steps.rp.outputs['tag_name'] }}
     steps:
+      - name: Require RELEASE_PLEASE_TOKEN
+        env:
+          TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error title=RELEASE_PLEASE_TOKEN missing::No release PR without it. Create a fine-grained PAT for this repo (contents + pull requests read/write) and run: gh secret set RELEASE_PLEASE_TOKEN"
+            exit 1
+          fi
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5.0.0
         id: rp
         with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
@@ -51,7 +63,7 @@ jobs:
           output-file: sbom.spdx.json
           upload-artifact: false
           upload-release-assets: false
-      - name: Attach SBOM to the new release(s)
+      - name: Attach the SBOM, then publish the draft release(s)
         env:
           GH_TOKEN: ${{ github.token }}
           TAGS: >-
@@ -59,4 +71,5 @@ jobs:
         run: |
           for tag in $TAGS; do
             gh release upload "$tag" sbom.spdx.json --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$tag" --draft=false --repo "$GITHUB_REPOSITORY"
           done

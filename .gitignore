@@ -254,4 +254,7 @@ __marimo__/
 
 # bandit report
 bandit-report.json
+# Keep last: template files that broad rules above (`.python-version`, `/*.json`) must not hide.
+!/release-please-config.json
+!/.release-please-manifest.json
 !.github/tools/.python-version
