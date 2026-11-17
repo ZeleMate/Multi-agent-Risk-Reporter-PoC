@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier. Do not edit by hand; run `copier update`.
-_commit: v0.6.0
+_commit: v1.0.2
 _src_path: gh:ZeleMate/repo-template
 agentic: false
 ai_reviewers: []
@@ -17,8 +17,10 @@ package_name: multi_agent_risk_reporter_poc
 project_name: Multi-agent-Risk-Reporter-PoC
 project_slug: multi-agent-risk-reporter-poc
 publishes: false
+python_max_version: ''
 python_type_checker: mypy
 python_version: '3.11'
 quality_platform: sonarqube-cloud
+repo_name: Multi-agent-Risk-Reporter-PoC
 sonar_organization: zelemate
 visibility: public
